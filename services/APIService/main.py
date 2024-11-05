@@ -290,7 +290,7 @@ async def cleanup_jobs():
 
 @app.get("/saved_podcasts", response_model=Dict[str, List[SavedPodcast]])
 async def get_saved_podcasts():
-    """Get a list of all saved podcasts from storage"""
+    """Get a list of all saved podcasts from storage with their audio data"""
     try:
         saved_files = storage_manager.list_files()
         return {
@@ -300,7 +300,8 @@ async def get_saved_podcasts():
                     filename=file["filename"],
                     created_at=file["created_at"],
                     size=file["size"],
-                    transcription_params=file.get("transcription_params", {})
+                    transcription_params=file.get("transcription_params", {}),
+                    audio_data=file["audio_data"]  # Already base64 encoded from storage_manager
                 )
                 for file in saved_files
             ]

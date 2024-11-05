@@ -1,5 +1,6 @@
 import io
 import json
+import base64
 from minio import Minio
 from minio.error import S3Error
 from shared.shared_types import TranscriptionParams
@@ -90,29 +91,27 @@ class StorageManager:
             raise
 
     def list_files(self):
-        """List all audio files stored in MinIO with their metadata"""
+        """List all audio files stored in MinIO with their metadata and audio content"""
         try:
-            # List all objects recursively
             objects = self.client.list_objects(self.bucket_name, recursive=True)
             files = []
             
             for obj in objects:
-                # Skip if this is a directory marker
                 if obj.object_name.endswith('/'):
                     continue
                     
                 try:
-                    # Get the metadata for the file
                     stat = self.client.stat_object(self.bucket_name, obj.object_name)
-                    
-                    # Parse the path components
                     path_parts = obj.object_name.split('/')
                     
-                    # Only process .mp3 files
                     if not path_parts[-1].endswith('.mp3'):
                         continue
                         
-                    job_id = path_parts[0]  # First part is the job ID
+                    job_id = path_parts[0]
+                    
+                    # Get the audio data and encode it as base64
+                    audio_data = self.client.get_object(self.bucket_name, obj.object_name).read()
+                    audio_base64 = base64.b64encode(audio_data).decode('utf-8')
                     
                     file_info = {
                         "job_id": job_id,
@@ -120,10 +119,10 @@ class StorageManager:
                         "size": stat.size,
                         "created_at": obj.last_modified.isoformat(),
                         "path": obj.object_name,
+                        "audio_data": audio_base64,  # Include base64 encoded audio
                         "transcription_params": {}
                     }
                     
-                    # Try to get transcription params from metadata if it exists
                     if stat.metadata:
                         try:
                             params = stat.metadata.get("X-Amz-Meta-Transcription-Params")
@@ -139,9 +138,7 @@ class StorageManager:
                     logger.error(f"Error processing object {obj.object_name}: {str(e)}")
                     continue
                     
-            # Sort files by creation date, newest first
             files.sort(key=lambda x: x["created_at"], reverse=True)
-            
             logger.info(f"Successfully listed {len(files)} files from MinIO")
             return files
             

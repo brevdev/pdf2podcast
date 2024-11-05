@@ -52,3 +52,4 @@ class SavedPodcast(BaseModel):
     created_at: str
     size: int
     transcription_params: Optional[Dict] = {}
+    audio_data: str 
