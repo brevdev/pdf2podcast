@@ -25,7 +25,7 @@ check_env:
 # Development target
 dev: check_env
 	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f docker-compose.yaml up --build --detach
+	docker compose -f docker-compose.yaml up --build
 
 # Clean up containers and volumes
 clean:

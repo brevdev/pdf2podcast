@@ -1,9 +1,10 @@
 import io
 from fastapi import HTTPException, FastAPI, File, UploadFile, Form, BackgroundTasks, Response, WebSocket, WebSocketDisconnect
-from shared.shared_types import ServiceType, JobStatus, StatusUpdate
-from shared.job import ConnectionManager
+from shared.shared_types import ServiceType, JobStatus, StatusUpdate, TranscriptionParams
+from shared.connection import ConnectionManager
+from shared.storage import StorageManager
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 from typing import Dict, Set
 from minio import Minio
 from minio.error import S3Error
@@ -18,36 +19,17 @@ import asyncio
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-class TranscriptionParams(BaseModel):
-    duration: int = Field(..., description="Duration in minutes")
-    speaker_1_name: str = Field(..., description="Name of the first speaker")
-    speaker_2_name: str = Field(..., description="Name of the second speaker")
-    model: str = Field(..., description="Model name/path to use for transcription")
-    voice_mapping: Dict[str, str] = Field(
-        ..., 
-        description="Mapping of speaker IDs to voice IDs",
-        example={
-            "speaker-1": "iP95p4xoKVk53GoZ742B",
-            "speaker-2": "9BWtsMINqrJLrRacOk9x"
-        }
-    )
-
 app = FastAPI(debug=True)
 redis_client = redis.Redis.from_url(os.getenv("REDIS_URL", "redis://redis:6379"), decode_responses=False)
 
 # Initialize the connection manager
 manager = ConnectionManager(redis_client = redis_client)
+storage_manager = StorageManager()  
 
 # Service URLs
 PDF_SERVICE_URL = os.getenv("PDF_SERVICE_URL", "http://localhost:8003")
 AGENT_SERVICE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
 TTS_SERVICE_URL = os.getenv("TTS_SERVICE_URL", "http://localhost:8889")
-
-# Minio config
-MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "minio:9000")
-MINIO_ACCESS_KEY = os.getenv("MINIO_ACCESS_KEY", "minioadmin")
-MINIO_SECRET_KEY = os.getenv("MINIO_SECRET_KEY", "minioadmin")
-MINIO_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "audio-results")
 
 # MP3 Cache TTL
 MP3_CACHE_TTL = 60 * 60 * 4  # 4 hours
@@ -101,58 +83,6 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         logger.error(f"WebSocket error for job {job_id}: {e}")
     finally:
         manager.disconnect(websocket, job_id)
-
-
-# TODO: use this to wrap redis as well
-# TODO: wrap errors in StorageError
-# TODO: implement cleanup and delete as well
-class StorageManager:
-    def __init__(self):
-        """Initialize MinIO client and ensure bucket exists"""
-        try:
-            self.client = Minio(
-                os.getenv("MINIO_ENDPOINT", "minio:9000"),
-                access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
-                secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"),
-                secure=os.getenv("MINIO_SECURE", "false").lower() == "true"
-            )
-            
-            self.bucket_name = os.getenv("MINIO_BUCKET_NAME", "audio-results")
-            self._ensure_bucket_exists()
-            logger.info("Successfully initialized MinIO storage")
-            
-        except Exception as e:
-            logger.error(f"Failed to initialize MinIO client: {e}")
-            raise
-
-    def _ensure_bucket_exists(self):
-        try:    
-            if not self.client.bucket_exists(self.bucket_name):
-                self.client.make_bucket(self.bucket_name)
-        except Exception as e:
-            logger.error(f"Failed to ensure bucket exists: {e}")
-            raise
-    
-    def store_audio(self, job_id: str, audio_content: bytes, filename: str, transcription_params: TranscriptionParams):
-        try:
-            object_name = f"{job_id}/{filename}"
-            self.client.put_object(self.bucket_name, object_name, io.BytesIO(audio_content), len(audio_content), content_type="audio/mpeg")
-            logger.info(f"Stored audio for {job_id} in MinIO as {object_name}")
-        except S3Error as e:
-            logger.error(f"Failed to store audio in MinIO: {e}")
-            raise
-            
-    def get_audio(self, job_id: str, filename: str):
-        try:
-            object_name = f"{job_id}/{filename}"
-            result = self.client.get_object(self.bucket_name, object_name).read()
-            logger.info(f"Retrieved audio for {job_id} from MinIO as {object_name}")
-            return result
-        except S3Error as e:
-            logger.error(f"Failed to get audio from MinIO: {e}")
-            raise
-
-storage_manager = StorageManager()  
 
 def process_pdf_task(job_id: str, file_content: bytes, transcription_params: TranscriptionParams):
     try:
