@@ -14,6 +14,7 @@ from shared.shared_types import (
     JobStatus,
     StatusUpdate,
     TranscriptionParams,
+    SavedPodcast,
 )
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
@@ -286,22 +287,26 @@ async def cleanup_jobs():
     return {"message": f"Removed {removed} old jobs"}
 
 
-@app.get("/saved_podcasts")
+@app.get("/saved_podcasts", response_model=Dict[str, List[SavedPodcast]])
 async def get_saved_podcasts():
     """Get a list of all saved podcasts from storage"""
     try:
         saved_files = storage_manager.list_files()
         return {
             "podcasts": [
-                {
-                    "job_id": file.job_id,
-                    "filename": file.filename,
-                    "created_at": file.created_at,
-                    "transcription_params": file.transcription_params,
-                }
+                SavedPodcast(
+                    job_id=file["job_id"],
+                    filename=file["filename"],
+                    created_at=file["created_at"],
+                    size=file["size"],
+                    transcription_params=file.get("transcription_params", {})
+                )
                 for file in saved_files
             ]
         }
     except Exception as e:
         logger.error(f"Failed to list saved podcasts: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to retrieve saved podcasts")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to retrieve saved podcasts: {str(e)}"
+        )
