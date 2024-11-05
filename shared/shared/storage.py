@@ -6,6 +6,7 @@ from minio.error import S3Error
 from shared.shared_types import TranscriptionParams
 import os
 import logging
+from typing import Optional
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -90,8 +91,8 @@ class StorageManager:
             logger.error(f"Failed to get audio from MinIO: {e}")
             raise
 
-    def list_files(self):
-        """List all audio files stored in MinIO with their metadata and audio content"""
+    def list_files_metadata(self):
+        """List all audio files stored in MinIO with their metadata but without audio content"""
         try:
             objects = self.client.list_objects(self.bucket_name, recursive=True)
             files = []
@@ -109,17 +110,12 @@ class StorageManager:
                         
                     job_id = path_parts[0]
                     
-                    # Get the audio data and encode it as base64
-                    audio_data = self.client.get_object(self.bucket_name, obj.object_name).read()
-                    audio_base64 = base64.b64encode(audio_data).decode('utf-8')
-                    
                     file_info = {
                         "job_id": job_id,
                         "filename": path_parts[-1],
                         "size": stat.size,
                         "created_at": obj.last_modified.isoformat(),
                         "path": obj.object_name,
-                        "audio_data": audio_base64,  # Include base64 encoded audio
                         "transcription_params": {}
                     }
                     
@@ -139,9 +135,33 @@ class StorageManager:
                     continue
                     
             files.sort(key=lambda x: x["created_at"], reverse=True)
-            logger.info(f"Successfully listed {len(files)} files from MinIO")
+            logger.info(f"Successfully listed {len(files)} metadata for {len(files)} files from MinIO")
             return files
             
         except Exception as e:
             logger.error(f"Failed to list files from MinIO: {str(e)}")
+            raise
+
+    def get_podcast_audio(self, job_id: str) -> Optional[str]:
+        """Get the audio data for a specific podcast by job_id"""
+        try:
+            # Find the file with matching job_id
+            objects = self.client.list_objects(
+                self.bucket_name, 
+                prefix=f"{job_id}/", 
+                recursive=True
+            )
+            
+            for obj in objects:
+                if obj.object_name.endswith('.mp3'):
+                    audio_data = self.client.get_object(
+                        self.bucket_name, 
+                        obj.object_name
+                    ).read()
+                    return base64.b64encode(audio_data).decode('utf-8')
+            
+            return None
+            
+        except Exception as e:
+            logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
             raise
