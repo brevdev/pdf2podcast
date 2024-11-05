@@ -1,0 +1,67 @@
+name: Build and Push Containers
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  REGISTRY: nvcr.io
+  NAMESPACE: pfteb4cqjzrs/playground
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [api-service, agent-service, pdf-service, tts-service]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to NVCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.NVCR_API_KEY }}
+
+      - name: Get previous version
+        id: get_version
+        run: |
+          CURRENT_VERSION=$(curl -s "https://${{ env.REGISTRY }}/v2/${{ env.NAMESPACE }}/${{ matrix.service }}/tags/list" | jq -r '.tags[]' | grep -E '^[0-9]+\.[0-9]+$' | sort -V | tail -n1 || echo "1.0")
+          echo "CURRENT_VERSION=${CURRENT_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Bump version
+        id: bump_version
+        run: |
+          IFS='.' read -r major minor <<< "${{ steps.get_version.outputs.CURRENT_VERSION }}"
+          NEW_VERSION="${major}.$((minor + 1))"
+          echo "NEW_VERSION=${NEW_VERSION}" >> $GITHUB_OUTPUT
+
+      - name: Build and push
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.service }}:${{ steps.bump_version.outputs.NEW_VERSION }}
+            ${{ env.REGISTRY }}/${{ env.NAMESPACE }}/${{ matrix.service }}:latest
+
+      - name: Update docker-compose file
+        if: success()
+        run: |
+          sed -i 's/${{ matrix.service }}:[0-9]\+\.[0-9]\+/${{ matrix.service }}:${{ steps.bump_version.outputs.NEW_VERSION }}/g' docker-compose-remote.yaml
+
+      - name: Commit and push changes
+        if: success()
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add docker-compose-remote.yaml
+          git commit -m "chore: bump ${{ matrix.service }} version to ${{ steps.bump_version.outputs.NEW_VERSION }}"
+          git push
