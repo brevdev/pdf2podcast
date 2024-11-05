@@ -1,4 +1,3 @@
-import io
 from fastapi import (
     HTTPException,
     FastAPI,
@@ -20,9 +19,6 @@ from shared.connection import ConnectionManager
 from shared.storage import StorageManager
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
-from typing import Dict, Set
-from minio import Minio
-from minio.error import S3Error
 import redis
 import requests
 import json

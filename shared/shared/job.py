@@ -69,7 +69,7 @@ class JobStatusManager:
                     job_id = key.split(b":")[1].decode()
                     self.redis.delete(f"result:{job_id}:{self.service_type}")
                     removed += 1
-            except (KeyError, ValueError) as e:
+            except (KeyError, ValueError):
                 # Handle malformed status entries
                 continue
         return removed

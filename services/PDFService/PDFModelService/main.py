@@ -4,6 +4,9 @@ import os
 import logging
 from typing import Dict
 import uuid
+from fastapi.responses import JSONResponse
+
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -53,14 +56,6 @@ async def convert_pdf(file: UploadFile = File(...)) -> Dict[str, str]:
         if "temp_file_path" in locals() and os.path.exists(temp_file_path):
             os.unlink(temp_file_path)
         raise HTTPException(status_code=500, detail=str(e))
-
-
-from fastapi import FastAPI, File, UploadFile, HTTPException
-from fastapi.responses import JSONResponse
-from celery.result import AsyncResult
-import os
-import logging
-from typing import Dict
 
 
 @app.get("/status/{task_id}")

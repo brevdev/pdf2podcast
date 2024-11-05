@@ -8,7 +8,7 @@ import os
 import logging
 import time
 import asyncio
-from typing import Optional, Union, Dict
+from typing import Optional
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)

@@ -69,7 +69,7 @@ class StatusMonitor:
                             try:
                                 pong_waiter = await websocket.ping()
                                 await pong_waiter
-                            except:
+                            except: # noqa
                                 break
 
             except websockets.exceptions.ConnectionClosed:

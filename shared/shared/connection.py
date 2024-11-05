@@ -1,11 +1,7 @@
-import io
 from fastapi import WebSocket, WebSocketDisconnect
-from shared.shared_types import ServiceType, JobStatus, StatusUpdate
 from typing import Dict, Set
 import redis
-import requests
 import json
-import os
 import logging
 import time
 import asyncio

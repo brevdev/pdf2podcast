@@ -3,11 +3,7 @@ from minio import Minio
 from minio.error import S3Error
 from shared.shared_types import TranscriptionParams
 import os
-import json
-import os
 import logging
-import time
-import asyncio
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
