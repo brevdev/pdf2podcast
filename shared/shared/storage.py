@@ -1,6 +1,7 @@
 import io
 from minio import Minio
 from minio.error import S3Error
+from shared.shared_types import TranscriptionParams
 import os
 import json
 import os
