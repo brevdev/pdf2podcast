@@ -31,4 +31,12 @@ dev: check_env
 clean:
 	docker compose -f docker-compose.yaml down -v
 
-.PHONY: check_env dev clean
+lint:
+	ruff check
+
+format: 
+	ruff format
+
+ruff: lint format
+
+.PHONY: check_env dev clean ruff

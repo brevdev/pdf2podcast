@@ -39,3 +39,19 @@ The LLM (Large Language Model) flow is a crucial part of the content generation 
 - Dynamic and parallel execution of services
 - Structured dialogue generation for podcast-like content
 
+## Development
+
+In order to run this project locally, you can simply run the following command:
+
+```bash
+make dev
+```
+This will connect to the production LLM and PDF endpoint. The rest of the stack will run locally. From there, simply run 
+
+```bash
+python test.py
+```
+
+## CI/CD
+
+We use GitHub Actions to run the CI/CD pipeline. We use `ruff` for linting and formatting. To run locally, simply run `make ruff`.
