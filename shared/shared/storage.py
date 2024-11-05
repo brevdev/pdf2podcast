@@ -80,40 +80,38 @@ class StorageManager:
     def list_files(self):
         """List all audio files stored in MinIO"""
         try:
-            # List all objects recursively
-            objects = self.client.list_objects_v2(
-                self.bucket_name,
-                recursive=True
-            )
+            # List all objects (no prefix to get everything)
+            objects = self.client.list_objects(self.bucket_name)
             files = []
             
             for obj in objects:
-                # Only process .mp3 files
-                if not obj.object_name.endswith('.mp3'):
+                # Skip directory-like objects (ones ending in '/')
+                if obj.object_name.endswith('/'):
                     continue
                     
                 try:
-                    # Extract job_id from the first part of the path
-                    job_id = obj.object_name.split('/')[0]
-                    
-                    # Get the metadata
+                    # Get the metadata for each file
                     stat = self.client.stat_object(self.bucket_name, obj.object_name)
+                    
+                    # Extract job_id from the path (first part of the path)
+                    parts = obj.object_name.split('/')
+                    job_id = parts[0]
                     
                     files.append({
                         "job_id": job_id,
-                        "filename": obj.object_name,
+                        "filename": parts[-1],
                         "created_at": obj.last_modified.isoformat(),
                         "transcription_params": json.loads(
                             stat.metadata.get("transcription_params", "{}")
                         ) if stat.metadata else {}
                     })
-                    logger.info(f"Found audio file: {obj.object_name}")
+                    logger.info(f"Found file: {obj.object_name}")
                     
                 except Exception as e:
                     logger.error(f"Error processing object {obj.object_name}: {str(e)}")
                     continue
                     
-            logger.info(f"Total audio files found: {len(files)}")
+            logger.info(f"Total files found: {len(files)}")
             return files
         except Exception as e:
             logger.error(f"Failed to list files from MinIO: {str(e)}")
