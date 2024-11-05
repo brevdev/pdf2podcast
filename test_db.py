@@ -6,6 +6,7 @@ from datetime import datetime
 from dataclasses import dataclass
 from typing import Dict
 
+
 # Mock the TranscriptionParams that was in main.py
 @dataclass
 class TranscriptionParams:
@@ -15,6 +16,7 @@ class TranscriptionParams:
     model: str
     voice_mapping: Dict[str, str]
 
+
 class StorageManager:
     def __init__(self):
         """Initialize MinIO client and ensure bucket exists"""
@@ -23,7 +25,7 @@ class StorageManager:
                 os.getenv("MINIO_ENDPOINT", "localhost:9000"),
                 access_key=os.getenv("MINIO_ACCESS_KEY", "minioadmin"),
                 secret_key=os.getenv("MINIO_SECRET_KEY", "minioadmin"),
-                secure=os.getenv("MINIO_SECURE", "false").lower() == "true"
+                secure=os.getenv("MINIO_SECURE", "false").lower() == "true",
             )
 
             self.bucket_name = os.getenv("MINIO_BUCKET_NAME", "audio-results")
@@ -35,7 +37,7 @@ class StorageManager:
             raise
 
     def get_time(self):
-        return datetime.now().strftime('%H:%M:%S')
+        return datetime.now().strftime("%H:%M:%S")
 
     def _ensure_bucket_exists(self):
         try:
@@ -46,7 +48,13 @@ class StorageManager:
             print(f"[{self.get_time()}] Failed to ensure bucket exists: {e}")
             raise
 
-    def store_audio(self, job_id: str, audio_content: bytes, filename: str, transcription_params: TranscriptionParams):
+    def store_audio(
+        self,
+        job_id: str,
+        audio_content: bytes,
+        filename: str,
+        transcription_params: TranscriptionParams,
+    ):
         try:
             object_name = f"{job_id}/{filename}"
             self.client.put_object(
@@ -54,9 +62,11 @@ class StorageManager:
                 object_name,
                 io.BytesIO(audio_content),
                 len(audio_content),
-                content_type="audio/mpeg"
+                content_type="audio/mpeg",
             )
-            print(f"[{self.get_time()}] Stored audio for {job_id} in MinIO as {object_name}")
+            print(
+                f"[{self.get_time()}] Stored audio for {job_id} in MinIO as {object_name}"
+            )
             return True
         except Exception as e:
             print(f"[{self.get_time()}] Failed to store audio in MinIO: {e}")
@@ -66,11 +76,14 @@ class StorageManager:
         try:
             object_name = f"{job_id}/{filename}"
             result = self.client.get_object(self.bucket_name, object_name).read()
-            print(f"[{self.get_time()}] Retrieved audio for {job_id} from MinIO as {object_name}")
+            print(
+                f"[{self.get_time()}] Retrieved audio for {job_id} from MinIO as {object_name}"
+            )
             return result
         except Exception as e:
             print(f"[{self.get_time()}] Failed to get audio from MinIO: {e}")
             return None
+
 
 def test_storage_manager():
     print("\n=== Starting Storage Manager Tests ===")
@@ -84,10 +97,7 @@ def test_storage_manager():
         speaker_1_name="John",
         speaker_2_name="Jane",
         model="test-model",
-        voice_mapping={
-            "speaker-1": "voice1",
-            "speaker-2": "voice2"
-        }
+        voice_mapping={"speaker-1": "voice1", "speaker-2": "voice2"},
     )
 
     # Test 1: Initialize StorageManager
@@ -102,10 +112,7 @@ def test_storage_manager():
     # Test 2: Store audio file
     print("\nTest 2: Storing audio file")
     store_success = storage_manager.store_audio(
-        test_job_id,
-        test_audio_content,
-        test_filename,
-        test_transcription_params
+        test_job_id, test_audio_content, test_filename, test_transcription_params
     )
     if store_success:
         print("✓ Audio stored successfully")
@@ -132,12 +139,15 @@ def test_storage_manager():
     # Cleanup
     print("\nCleaning up test data...")
     try:
-        storage_manager.client.remove_object(storage_manager.bucket_name, f"{test_job_id}/{test_filename}")
+        storage_manager.client.remove_object(
+            storage_manager.bucket_name, f"{test_job_id}/{test_filename}"
+        )
         print("✓ Test data cleaned up successfully")
     except Exception as e:
         print(f"✗ Failed to clean up test data: {e}")
 
     print("\n=== Storage Manager Tests Completed ===")
+
 
 if __name__ == "__main__":
     test_storage_manager()

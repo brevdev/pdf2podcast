@@ -5,8 +5,10 @@ import time
 from fastapi import HTTPException
 from datetime import datetime
 
+
 def get_time():
-    return datetime.now().strftime('%H:%M:%S')
+    return datetime.now().strftime("%H:%M:%S")
+
 
 def get_output_with_retry(base_url: str, job_id: str, max_retries=10, retry_delay=2):
     """Retry getting output with exponential backoff"""
@@ -17,23 +19,28 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=10, retry_dela
                 return response.content
             elif response.status_code == 425:
                 # Result is being prepared, use shorter delay
-                wait_time = min(retry_delay * (1.5 ** attempt), 10)  # Cap at 10 seconds
-                print(f"[{get_time()}] Result is being prepared, retrying in {wait_time:.1f}s...")
+                wait_time = min(retry_delay * (1.5**attempt), 10)  # Cap at 10 seconds
+                print(
+                    f"[{get_time()}] Result is being prepared, retrying in {wait_time:.1f}s..."
+                )
                 time.sleep(wait_time)
                 continue
             elif response.status_code == 404:
                 # Result not found or job doesn't exist
                 raise HTTPException(status_code=404, detail="Result not found")
             else:
-                print(f"[{get_time()}] Unexpected status code {response.status_code}: {response.text}")
+                print(
+                    f"[{get_time()}] Unexpected status code {response.status_code}: {response.text}"
+                )
                 response.raise_for_status()
         except requests.RequestException as e:
             print(f"[{get_time()}] Error getting output: {e}")
             if attempt == max_retries - 1:
                 raise
-            time.sleep(retry_delay * (2 ** attempt))
-    
+            time.sleep(retry_delay * (2**attempt))
+
     raise TimeoutError("Failed to get output after maximum retries")
+
 
 def test_tts_api():
     # API endpoint URLs
@@ -46,7 +53,7 @@ def test_tts_api():
         # Load sample JSON data
         with open("sample.json", "r") as f:
             data = json.load(f)
-            
+
         # Add job_id if not present
         if "job_id" not in data:
             data["job_id"] = str(int(time.time()))
@@ -56,7 +63,9 @@ def test_tts_api():
         response = requests.post(generate_url, json=data)
 
         if response.status_code != 202:
-            print(f"[{get_time()}] Error: Unexpected status code {response.status_code}")
+            print(
+                f"[{get_time()}] Error: Unexpected status code {response.status_code}"
+            )
             print(response.text)
             return
 
@@ -76,7 +85,7 @@ def test_tts_api():
             status_data = status_response.json()
             current_status = status_data.get("status")
             message = status_data.get("message", "")
-            
+
             # Only print if status has changed
             if current_status != last_status:
                 print(f"[{get_time()}] Status: {current_status} - {message}")
@@ -87,13 +96,13 @@ def test_tts_api():
             elif current_status in ["failed", "FAILED", "JobStatus.FAILED"]:
                 print(f"[{get_time()}] Job failed: {message}")
                 return
-                
+
             time.sleep(2)
 
         # Get the final output with retry logic
         print(f"[{get_time()}] Retrieving audio file...")
         audio_content = get_output_with_retry(base_url, job_id)
-        
+
         # Save the audio file
         output_filename = f"output_{job_id}.mp3"
         with open(output_filename, "wb") as f:
@@ -102,6 +111,7 @@ def test_tts_api():
 
     except Exception as e:
         print(f"[{get_time()}] Error: {str(e)}")
+
 
 if __name__ == "__main__":
     test_tts_api()

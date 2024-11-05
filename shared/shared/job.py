@@ -4,6 +4,7 @@ import time
 import json
 import threading
 
+
 class JobStatusManager:
     def __init__(self, service_type: ServiceType, redis_url="redis://redis:6379"):
         self.redis = redis.Redis.from_url(redis_url, decode_responses=False)
@@ -16,10 +17,13 @@ class JobStatusManager:
             "status": "pending",
             "message": "Job created",
             "service": self.service_type,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
         # Encode the update dict as JSON bytes
-        self.redis.hset(f"status:{job_id}:{self.service_type}", mapping={k: str(v).encode() for k, v in update.items()})
+        self.redis.hset(
+            f"status:{job_id}:{self.service_type}",
+            mapping={k: str(v).encode() for k, v in update.items()},
+        )
         self.redis.publish("status_updates:all", json.dumps(update).encode())
 
     def update_status(self, job_id: str, status: str, message: str):
@@ -28,10 +32,13 @@ class JobStatusManager:
             "status": status,
             "message": message,
             "service": self.service_type,
-            "timestamp": time.time()
+            "timestamp": time.time(),
         }
         # Encode the update dict as JSON bytes
-        self.redis.hset(f"status:{job_id}:{self.service_type}", mapping={k: str(v).encode() for k, v in update.items()})
+        self.redis.hset(
+            f"status:{job_id}:{self.service_type}",
+            mapping={k: str(v).encode() for k, v in update.items()},
+        )
         self.redis.publish("status_updates:all", json.dumps(update).encode())
 
     def set_result(self, job_id: str, result: bytes):

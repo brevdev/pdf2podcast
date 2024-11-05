@@ -20,15 +20,14 @@ job_manager = JobStatusManager(ServiceType.TTS)
 MAX_CONCURRENT_REQUESTS = int(os.getenv("MAX_CONCURRENT_REQUESTS", "5"))
 DEFAULT_VOICE_1 = os.getenv("DEFAULT_VOICE_1", "iP95p4xoKVk53GoZ742B")
 DEFAULT_VOICE_2 = os.getenv("DEFAULT_VOICE_2", "9BWtsMINqrJLrRacOk9x")
-DEFAULT_VOICE_MAPPING = {
-    "speaker-1": DEFAULT_VOICE_1,
-    "speaker-2": DEFAULT_VOICE_2
-}
+DEFAULT_VOICE_MAPPING = {"speaker-1": DEFAULT_VOICE_1, "speaker-2": DEFAULT_VOICE_2}
+
 
 class DialogueEntry(BaseModel):
     text: str
     speaker: str
     voice_id: Optional[str] = None
+
 
 class TTSRequest(BaseModel):
     dialogue: List[DialogueEntry]
@@ -36,13 +35,15 @@ class TTSRequest(BaseModel):
     scratchpad: Optional[str] = ""
     voice_mapping: Optional[Dict[str, str]] = {
         "speaker-1": DEFAULT_VOICE_1,
-        "speaker-2": DEFAULT_VOICE_2
+        "speaker-2": DEFAULT_VOICE_2,
     }
+
 
 class VoiceInfo(BaseModel):
     voice_id: str
     name: str
     description: Optional[str] = None
+
 
 @lru_cache(maxsize=1)
 def get_available_voices() -> List[VoiceInfo]:
@@ -52,12 +53,14 @@ def get_available_voices() -> List[VoiceInfo]:
         response = client.voices.get_all()
         # Handle the response structure properly
         voices_data = response.voices  # Access the voices list directly
-        
+
         return [
             VoiceInfo(
                 voice_id=voice.voice_id,
                 name=voice.name,
-                description=voice.description if hasattr(voice, 'description') else None
+                description=voice.description
+                if hasattr(voice, "description")
+                else None,
             )
             for voice in voices_data
         ]
@@ -68,14 +71,15 @@ def get_available_voices() -> List[VoiceInfo]:
             VoiceInfo(
                 voice_id=DEFAULT_VOICE_1,
                 name="Default Voice 1",
-                description="Default speaker 1 voice"
+                description="Default speaker 1 voice",
             ),
             VoiceInfo(
                 voice_id=DEFAULT_VOICE_2,
                 name="Default Voice 2",
-                description="Default speaker 2 voice"
-            )
+                description="Default speaker 2 voice",
+            ),
         ]
+
 
 class TTSService:
     def __init__(self):
@@ -88,27 +92,29 @@ class TTSService:
             available_voices = get_available_voices()
             available_voice_ids = {voice.voice_id for voice in available_voices}
             invalid_voices = set(voice_mapping.values()) - available_voice_ids
-            
+
             if invalid_voices:
-                logger.warning(f"Using default voices. Invalid voice IDs: {invalid_voices}")
+                logger.warning(
+                    f"Using default voices. Invalid voice IDs: {invalid_voices}"
+                )
                 voice_mapping = {
                     "speaker-1": DEFAULT_VOICE_1,
-                    "speaker-2": DEFAULT_VOICE_2
+                    "speaker-2": DEFAULT_VOICE_2,
                 }
 
             job_manager.update_status(
-                job_id, 
+                job_id,
                 JobStatus.PROCESSING,
-                f"Processing {len(request.dialogue)} dialogue entries"
+                f"Processing {len(request.dialogue)} dialogue entries",
             )
 
-            combined_audio = await self._process_dialogue(job_id, request.dialogue, request.voice_mapping)
-            
+            combined_audio = await self._process_dialogue(
+                job_id, request.dialogue, request.voice_mapping
+            )
+
             job_manager.set_result(job_id, combined_audio)
             job_manager.update_status(
-                job_id,
-                JobStatus.COMPLETED,
-                "Audio generation completed successfully"
+                job_id, JobStatus.COMPLETED, "Audio generation completed successfully"
             )
 
         except Exception as e:
@@ -116,29 +122,29 @@ class TTSService:
             job_manager.update_status(job_id, JobStatus.FAILED, str(e))
 
     async def _process_dialogue(
-        self, 
-        job_id: str, 
-        dialogue: List[DialogueEntry], 
-        voice_mapping: Dict[str, str]
+        self, job_id: str, dialogue: List[DialogueEntry], voice_mapping: Dict[str, str]
     ) -> bytes:
         combined_audio = b""
         tasks = [
             (
                 entry.text,
-                entry.voice_id if entry.voice_id and entry.voice_id in voice_mapping.values()
-                else voice_mapping.get(entry.speaker, DEFAULT_VOICE_MAPPING[entry.speaker])
+                entry.voice_id
+                if entry.voice_id and entry.voice_id in voice_mapping.values()
+                else voice_mapping.get(
+                    entry.speaker, DEFAULT_VOICE_MAPPING[entry.speaker]
+                ),
             )
             for entry in dialogue
         ]
-        
+
         for i in range(0, len(tasks), MAX_CONCURRENT_REQUESTS):
-            batch = tasks[i:i + MAX_CONCURRENT_REQUESTS]
+            batch = tasks[i : i + MAX_CONCURRENT_REQUESTS]
             job_manager.update_status(
                 job_id,
                 JobStatus.PROCESSING,
-                f"Processing batch {i//MAX_CONCURRENT_REQUESTS + 1} of {(len(tasks)-1)//MAX_CONCURRENT_REQUESTS + 1}"
+                f"Processing batch {i//MAX_CONCURRENT_REQUESTS + 1} of {(len(tasks)-1)//MAX_CONCURRENT_REQUESTS + 1}",
             )
-            
+
             futures = [
                 self.thread_pool.submit(self._convert_text, text, voice_id)
                 for text, voice_id in batch
@@ -147,7 +153,7 @@ class TTSService:
                 combined_audio += await asyncio.get_event_loop().run_in_executor(
                     None, future.result
                 )
-        
+
         return combined_audio
 
     def _convert_text(self, text: str, voice_id: str) -> bytes:
@@ -158,18 +164,21 @@ class TTSService:
             voice_id=voice_id,
             model_id="eleven_monolingual_v1",
             output_format="mp3_44100_128",
-            voice_settings={"stability": 0.5, "similarity_boost": 0.75, "style": 0.0}
+            voice_settings={"stability": 0.5, "similarity_boost": 0.75, "style": 0.0},
         )
         return b"".join(chunk for chunk in audio_stream)
 
+
 # Initialize service
 tts_service = TTSService()
+
 
 @app.get("/voices")
 async def list_voices() -> List[VoiceInfo]:
     """Get list of available voices"""
     voices = get_available_voices()
     return voices
+
 
 @app.post("/generate_tts", status_code=202)
 async def generate_tts(request: TTSRequest, background_tasks: BackgroundTasks):
@@ -178,10 +187,12 @@ async def generate_tts(request: TTSRequest, background_tasks: BackgroundTasks):
     background_tasks.add_task(tts_service.process_job, request.job_id, request)
     return {"job_id": request.job_id}
 
+
 @app.get("/status/{job_id}")
 async def get_status(job_id: str):
     """Get job status"""
     return job_manager.get_status(job_id)
+
 
 @app.get("/output/{job_id}")
 async def get_output(job_id: str):
@@ -192,14 +203,16 @@ async def get_output(job_id: str):
     return Response(
         content=result,
         media_type="audio/mpeg",
-        headers={"Content-Disposition": "attachment; filename=output.mp3"}
+        headers={"Content-Disposition": "attachment; filename=output.mp3"},
     )
+
 
 @app.post("/cleanup")
 async def cleanup_jobs():
     """Clean up old jobs"""
     removed = job_manager.cleanup_old_jobs()
     return {"message": f"Removed {removed} old jobs"}
+
 
 @app.get("/health")
 async def health():
@@ -208,5 +221,5 @@ async def health():
     return {
         "status": "healthy",
         "available_voices": len(voices),
-        "max_concurrent_requests": MAX_CONCURRENT_REQUESTS
+        "max_concurrent_requests": MAX_CONCURRENT_REQUESTS,
     }

@@ -5,10 +5,11 @@ import time
 from pathlib import Path
 from shared.shared_types import StatusResponse
 
+
 def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
     """
     Test the PDF conversion endpoint by uploading a PDF file and displaying the markdown result.
-    
+
     Args:
         pdf_path: Path to the PDF file to convert
         api_url: Base URL of the API service
@@ -29,19 +30,17 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
         sys.exit(1)
 
     # Prepare the file for upload
-    files = {
-        'file': (pdf_file.name, open(pdf_file, 'rb'), 'application/pdf')
-    }
+    files = {"file": (pdf_file.name, open(pdf_file, "rb"), "application/pdf")}
 
     try:
         # Make the conversion request
         print(f"\nUploading {pdf_file.name} for conversion...")
         response = requests.post(f"{api_url}/convert", files=files)
         response.raise_for_status()
-        
+
         # Get the task ID
         result = response.json()
-        task_id = result['task_id']
+        task_id = result["task_id"]
         print(f"Task ID: {task_id}")
         print("Waiting for conversion to complete...")
 
@@ -49,10 +48,12 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
         while True:
             status_response = requests.get(f"{api_url}/status/{task_id}")
 
-            try :
+            try:
                 status_data = StatusResponse.model_validate(status_response.json())
-                print(f"Status check response: Code={status_response.status_code}, Data={status_data}")
-                        
+                print(
+                    f"Status check response: Code={status_response.status_code}, Data={status_data}"
+                )
+
                 if status_response.status_code == 200:
                     # Task completed successfully
                     result = status_data.result
@@ -73,18 +74,18 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
                 print(f"Error checking status: {str(e)}")
                 return False
 
-        
     except requests.exceptions.RequestException as e:
         print(f"Error during conversion: {e}")
-        if hasattr(e, 'response') and e.response is not None:
+        if hasattr(e, "response") and e.response is not None:
             print(f"Response content: {e.response.text}")
     finally:
         # Ensure the file is closed
-        files['file'][1].close()
+        files["file"][1].close()
+
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
         print("Usage: python test_pdf_api.py <path_to_pdf_file>")
         sys.exit(1)
-    
+
     test_pdf_conversion(sys.argv[1], "http://localhost:8003")
