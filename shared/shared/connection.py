@@ -17,7 +17,7 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 class ConnectionManager:
-    def __init__(self, redis_client: redis.Redis[bytes]):
+    def __init__(self, redis_client: redis.Redis):
         self.active_connections: Dict[str, Set[WebSocket]] = defaultdict(set)
         self.pubsub = None
         self.message_queue = queue.Queue()
