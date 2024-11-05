@@ -1,4 +1,5 @@
 import io
+import json
 from minio import Minio
 from minio.error import S3Error
 from shared.shared_types import TranscriptionParams
@@ -74,4 +75,28 @@ class StorageManager:
             return result
         except S3Error as e:
             logger.error(f"Failed to get audio from MinIO: {e}")
+            raise
+
+    def list_files(self):
+        """List all audio files stored in MinIO"""
+        try:
+            objects = self.client.list_objects(self.bucket_name, prefix="audio/")
+            files = []
+            for obj in objects:
+                # Get the metadata for each file
+                stat = self.client.stat_object(self.bucket_name, obj.object_name)
+                metadata = stat.metadata or {}
+                files.append(
+                    {
+                        "job_id": metadata.get("job_id"),
+                        "filename": obj.object_name.split("/")[-1],
+                        "created_at": obj.last_modified.isoformat(),
+                        "transcription_params": json.loads(
+                            metadata.get("transcription_params", "{}")
+                        )
+                    }
+                )
+            return files
+        except Exception as e:
+            logger.error(f"Failed to list files from MinIO: {str(e)}")
             raise

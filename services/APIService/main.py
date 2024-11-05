@@ -284,3 +284,27 @@ async def cleanup_jobs():
             redis_client.delete(f"result:{job_id}:{service}")
             removed += 1
     return {"message": f"Removed {removed} old jobs"}
+
+@app.get("/saved_podcasts")
+async def get_saved_podcasts():
+    """Get a list of all saved podcasts from storage"""
+    try:
+        saved_files = storage_manager.list_files()
+        return {
+            "podcasts": [
+                {
+                    "job_id": file.job_id,
+                    "filename": file.filename,
+                    "created_at": file.created_at,
+                    "transcription_params": file.transcription_params
+                }
+                for file in saved_files
+            ]
+        }
+    except Exception as e:
+        logger.error(f"Failed to list saved podcasts: {str(e)}")
+        raise HTTPException(
+            status_code=500,
+            detail="Failed to retrieve saved podcasts"
+        )
+
