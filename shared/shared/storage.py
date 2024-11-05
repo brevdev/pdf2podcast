@@ -80,22 +80,31 @@ class StorageManager:
     def list_files(self):
         """List all audio files stored in MinIO"""
         try:
-            objects = self.client.list_objects(self.bucket_name, prefix="audio/")
+            # List all objects (no prefix to get everything)
+            objects = self.client.list_objects(self.bucket_name)
             files = []
+            
             for obj in objects:
-                # Get the metadata for each file
-                stat = self.client.stat_object(self.bucket_name, obj.object_name)
-                metadata = stat.metadata or {}
-                files.append(
-                    {
-                        "job_id": metadata.get("job_id"),
-                        "filename": obj.object_name.split("/")[-1],
+                try:
+                    # Get the metadata for each file
+                    stat = self.client.stat_object(self.bucket_name, obj.object_name)
+                    
+                    # Extract job_id from the path (first part of the path)
+                    job_id = obj.object_name.split('/')[0]
+                    
+                    files.append({
+                        "job_id": job_id,
+                        "filename": obj.object_name.split('/')[-1],
                         "created_at": obj.last_modified.isoformat(),
                         "transcription_params": json.loads(
-                            metadata.get("transcription_params", "{}")
-                        )
-                    }
-                )
+                            stat.metadata.get("transcription_params", "{}")
+                        ) if stat.metadata else {}
+                    })
+                    
+                except Exception as e:
+                    logger.error(f"Error processing object {obj.object_name}: {str(e)}")
+                    continue
+                    
             return files
         except Exception as e:
             logger.error(f"Failed to list files from MinIO: {str(e)}")
