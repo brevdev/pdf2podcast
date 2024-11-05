@@ -58,25 +58,25 @@ class StorageManager:
         """Store audio file with metadata in MinIO"""
         try:
             object_name = f"{job_id}/{filename}"
-            
+
             # Convert transcription params to JSON string for metadata
             params_json = json.dumps(transcription_params.model_dump())
-            
+
             # Create metadata dictionary with transcription params
-            metadata = {
-                "X-Amz-Meta-Transcription-Params": params_json
-            }
-            
+            metadata = {"X-Amz-Meta-Transcription-Params": params_json}
+
             self.client.put_object(
                 self.bucket_name,
                 object_name,
                 io.BytesIO(audio_content),
                 len(audio_content),
                 content_type="audio/mpeg",
-                metadata=metadata
+                metadata=metadata,
             )
-            logger.info(f"Stored audio for {job_id} in MinIO as {object_name} with metadata")
-            
+            logger.info(
+                f"Stored audio for {job_id} in MinIO as {object_name} with metadata"
+            )
+
         except S3Error as e:
             logger.error(f"Failed to store audio in MinIO: {e}")
             raise
@@ -96,48 +96,56 @@ class StorageManager:
         try:
             objects = self.client.list_objects(self.bucket_name, recursive=True)
             files = []
-            
+
             for obj in objects:
-                if obj.object_name.endswith('/'):
+                if obj.object_name.endswith("/"):
                     continue
-                    
+
                 try:
                     stat = self.client.stat_object(self.bucket_name, obj.object_name)
-                    path_parts = obj.object_name.split('/')
-                    
-                    if not path_parts[-1].endswith('.mp3'):
+                    path_parts = obj.object_name.split("/")
+
+                    if not path_parts[-1].endswith(".mp3"):
                         continue
-                        
+
                     job_id = path_parts[0]
-                    
+
                     file_info = {
                         "job_id": job_id,
                         "filename": path_parts[-1],
                         "size": stat.size,
                         "created_at": obj.last_modified.isoformat(),
                         "path": obj.object_name,
-                        "transcription_params": {}
+                        "transcription_params": {},
                     }
-                    
+
                     if stat.metadata:
                         try:
-                            params = stat.metadata.get("X-Amz-Meta-Transcription-Params")
+                            params = stat.metadata.get(
+                                "X-Amz-Meta-Transcription-Params"
+                            )
                             if params:
                                 file_info["transcription_params"] = json.loads(params)
                         except json.JSONDecodeError:
-                            logger.warning(f"Could not parse transcription params for {obj.object_name}")
-                    
+                            logger.warning(
+                                f"Could not parse transcription params for {obj.object_name}"
+                            )
+
                     files.append(file_info)
-                    logger.info(f"Found file: {obj.object_name}, size: {stat.size} bytes")
-                    
+                    logger.info(
+                        f"Found file: {obj.object_name}, size: {stat.size} bytes"
+                    )
+
                 except Exception as e:
                     logger.error(f"Error processing object {obj.object_name}: {str(e)}")
                     continue
-                    
+
             files.sort(key=lambda x: x["created_at"], reverse=True)
-            logger.info(f"Successfully listed {len(files)} metadata for {len(files)} files from MinIO")
+            logger.info(
+                f"Successfully listed {len(files)} metadata for {len(files)} files from MinIO"
+            )
             return files
-            
+
         except Exception as e:
             logger.error(f"Failed to list files from MinIO: {str(e)}")
             raise
@@ -147,21 +155,18 @@ class StorageManager:
         try:
             # Find the file with matching job_id
             objects = self.client.list_objects(
-                self.bucket_name, 
-                prefix=f"{job_id}/", 
-                recursive=True
+                self.bucket_name, prefix=f"{job_id}/", recursive=True
             )
-            
+
             for obj in objects:
-                if obj.object_name.endswith('.mp3'):
+                if obj.object_name.endswith(".mp3"):
                     audio_data = self.client.get_object(
-                        self.bucket_name, 
-                        obj.object_name
+                        self.bucket_name, obj.object_name
                     ).read()
-                    return base64.b64encode(audio_data).decode('utf-8')
-            
+                    return base64.b64encode(audio_data).decode("utf-8")
+
             return None
-            
+
         except Exception as e:
             logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
             raise

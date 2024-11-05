@@ -29,7 +29,7 @@ def list_saved_podcasts():
             print(f"Job ID: {podcast['job_id']}")
             print(f"Filename: {podcast['filename']}")
             print(f"Created: {created_at}")
-            print(f"Transcription Parameters:")
+            print("Transcription Parameters:")
             print(json.dumps(podcast["transcription_params"], indent=2))
             print("-" * 80)
 
