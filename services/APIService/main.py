@@ -285,6 +285,7 @@ async def cleanup_jobs():
             removed += 1
     return {"message": f"Removed {removed} old jobs"}
 
+
 @app.get("/saved_podcasts")
 async def get_saved_podcasts():
     """Get a list of all saved podcasts from storage"""
@@ -296,15 +297,11 @@ async def get_saved_podcasts():
                     "job_id": file.job_id,
                     "filename": file.filename,
                     "created_at": file.created_at,
-                    "transcription_params": file.transcription_params
+                    "transcription_params": file.transcription_params,
                 }
                 for file in saved_files
             ]
         }
     except Exception as e:
         logger.error(f"Failed to list saved podcasts: {str(e)}")
-        raise HTTPException(
-            status_code=500,
-            detail="Failed to retrieve saved podcasts"
-        )
-
+        raise HTTPException(status_code=500, detail="Failed to retrieve saved podcasts")
