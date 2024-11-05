@@ -6,3 +6,4 @@ tmp
 kompose
 get_helm.sh
 .env
+.ruff_cache
