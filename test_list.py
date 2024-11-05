@@ -21,15 +21,6 @@ def list_saved_podcasts():
         if not podcasts:
             print("\nNo saved podcasts found in API response.")
 
-            # Debug: Try to list directly from MinIO
-            print("\nDebug: Checking MinIO directly...")
-            # storage = StorageManager()
-            # minio_files = storage.list_files()
-            # print(f"Found {len(minio_files)} files in MinIO:")
-            # for file in minio_files:
-            #     print(f"- {file['job_id']}/{file['filename']}")
-            # return
-
         print("\nSaved Podcasts:")
         print("-" * 80)
 

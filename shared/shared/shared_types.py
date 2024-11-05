@@ -54,5 +54,4 @@ class SavedPodcast(BaseModel):
     transcription_params: Optional[Dict] = {}
 
 class SavedPodcastWithAudio(SavedPodcast):
-    """Pydantic model for podcast with audio data"""
     audio_data: str
