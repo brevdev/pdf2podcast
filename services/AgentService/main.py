@@ -1,5 +1,6 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
 from shared.shared_types import ServiceType, JobStatus
+from shared.storage import StorageManager
 from shared.job import JobStatusManager
 import flexagent as fa
 from flexagent.backend import BackendConfig
@@ -164,10 +165,37 @@ class LLMManager:
                     ) from e
                 time.sleep(3)
 
+class PromptTracker:
+    """Track prompts and responses"""
+    def __init__(self, job_id: str):
+        self.job_id = job_id
+        self.steps = []
+
+    def track(self, step_name: str, prompt: str, response: str, model: str):
+        self.steps.append({
+            "step_name": step_name,
+            "prompt": prompt,
+            "response": response,
+            "model": model,
+            "timestamp": time.time(),
+        })
+    
+    def save(self, storage_manager: StorageManager):
+        storage_manager.store_file(
+            self.job_id,
+            json.dumps(self.steps).encode(),
+            f"{self.job_id}_prompt_tracker.json",
+            "application/json",
+        )
+        logger.info(
+            f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
+        )
+
 
 # FastAPI Application
 app = FastAPI(debug=True)
 job_manager = JobStatusManager(ServiceType.AGENT)
+storage_manager = StorageManager()
 
 
 def process_transcription(job_id: str, request: TranscriptionRequest):
@@ -176,6 +204,9 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             api_key=os.getenv("NIM_KEY"),
             config_path=os.getenv("MODEL_CONFIG_PATH"),  # Add this line
         )
+
+        prompt_tracker = PromptTracker(job_id)
+
         # Initialize processing
         job_manager.update_status(
             job_id, JobStatus.PROCESSING, "Initializing processing"
@@ -192,6 +223,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         raw_outline = llm_manager.query(
             "reasoning", [{"role": "user", "content": prompt}]
         )
+        prompt_tracker.track("raw_outline", prompt, raw_outline, llm_manager.model_configs["reasoning"])
 
         # Convert to structured format
         job_manager.update_status(
@@ -203,6 +235,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         outline = llm_manager.query(
             "json", [{"role": "user", "content": prompt}], json_schema=schema
         )
+        prompt_tracker.track("outline", prompt, outline, llm_manager.model_configs["json"])
         outline_json = json.loads(outline)
 
         # Process segments
@@ -233,11 +266,9 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
                     topic=segment["section"],
                     angles="\n".join(segment["descriptions"]),
                 )
-                segments.append(
-                    llm_manager.query(
-                        "reasoning", [{"role": "user", "content": prompt}], sync=False
-                    )
-                )
+                seg_response = llm_manager.query("reasoning", [{"role": "user", "content": prompt}], sync=False)
+                segments.append(seg_response)
+                prompt_tracker.track(f"segment_transcript_{idx}", prompt, seg_response.get(), llm_manager.model_configs["reasoning"])
 
         # Generate dialogue
         segment_transcripts = []
@@ -254,11 +285,9 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
                 speaker_1_name=request.speaker_1_name,
                 speaker_2_name=request.speaker_2_name,
             )
-            segment_transcripts.append(
-                llm_manager.query(
-                    "reasoning", [{"role": "user", "content": prompt}], sync=False
-                )
-            )
+            seg_response = llm_manager.query("reasoning", [{"role": "user", "content": prompt}], sync=False)
+            segment_transcripts.append(seg_response)
+            prompt_tracker.track(f"segment_dialogue_{idx}", prompt, seg_response.get(), llm_manager.model_configs["reasoning"])
 
         # Combine transcripts
         job_manager.update_status(job_id, JobStatus.PROCESSING, "Combining segments")
@@ -273,6 +302,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         full_outline = llm_manager.query(
             "reasoning", [{"role": "user", "content": prompt}]
         )
+        prompt_tracker.track("fuse_outline", prompt, full_outline, llm_manager.model_configs["reasoning"])
 
         # Revise dialogue
         job_manager.update_status(job_id, JobStatus.PROCESSING, "Revising dialogue")
@@ -284,6 +314,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         conversation = llm_manager.query(
             "reasoning", [{"role": "user", "content": prompt}]
         )
+        prompt_tracker.track("revise_dialogue", prompt, conversation, llm_manager.model_configs["reasoning"])
 
         # Convert to final JSON format
         schema = Conversation.model_json_schema()
@@ -299,6 +330,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         final_conversation = llm_manager.query(
             "json", [{"role": "user", "content": prompt}], json_schema=schema
         )
+        prompt_tracker.track("final_conversation", prompt, final_conversation, llm_manager.model_configs["json"])
 
         # Store result
         result = json.loads(final_conversation)
@@ -306,6 +338,9 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         job_manager.set_result_with_expiration(
             job_id, json.dumps(result).encode(), ex=120
         )
+
+        prompt_tracker.save(storage_manager)
+
         job_manager.update_status(
             job_id, JobStatus.COMPLETED, "Transcription completed successfully"
         )

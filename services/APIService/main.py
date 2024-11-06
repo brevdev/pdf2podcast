@@ -150,13 +150,16 @@ def process_pdf_task(
                                 f"{AGENT_SERVICE_URL}/output/{job_id}"
                             ).json()
 
-                            # Store agent result in minio
+                            # Store script result in minio
                             storage_manager.store_file(
                                 job_id,
                                 json.dumps(agent_result).encode(),
                                 f"{job_id}_agent_result.json",
                                 "application/json",
                                 transcription_params,
+                            )
+                            logger.info(
+                                f"Stored agent result for {job_id} in minio, size: {len(json.dumps(agent_result).encode())} bytes"
                             )
 
                             requests.post(
