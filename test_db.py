@@ -10,6 +10,7 @@ from typing import Dict
 # Mock the TranscriptionParams that was in main.py
 @dataclass
 class TranscriptionParams:
+    name: str
     duration: int
     speaker_1_name: str
     speaker_2_name: str
@@ -93,6 +94,7 @@ def test_storage_manager():
     test_audio_content = b"fake audio content for testing"
     test_filename = f"{test_job_id}.mp3"
     test_transcription_params = TranscriptionParams(
+        name="Test Podcast",
         duration=5,
         speaker_1_name="John",
         speaker_2_name="Jane",

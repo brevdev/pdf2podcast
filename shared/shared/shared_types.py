@@ -33,6 +33,7 @@ class StatusResponse(BaseModel):
 
 
 class TranscriptionParams(BaseModel):
+    name: str = Field(..., description="Name of the podcast")
     duration: int = Field(..., description="Duration in minutes")
     speaker_1_name: str = Field(..., description="Name of the first speaker")
     speaker_2_name: str = Field(..., description="Name of the second speaker")
