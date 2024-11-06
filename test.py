@@ -169,6 +169,7 @@ def test_api(base_url: str):
 
     # Prepare the payload
     transcription_params = {
+        "name": "ishan-test",
         "duration": 5,
         "speaker_1_name": "Blackwell",
         "speaker_2_name": "Hopper",
