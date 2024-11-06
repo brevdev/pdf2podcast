@@ -317,7 +317,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         # Track each segment transcript
         for idx, segment in enumerate(segments):
             prompt_tracker.track(
-                f"raw_podcast_dialogue_v2{idx}",
+                f"raw_podcast_dialogue_v2_segment_{idx}",
                 prompt,
                 segment.get(),
                 llm_manager.model_configs["reasoning"].name,
@@ -444,7 +444,7 @@ def deep_dive_segment(
         seg_response = llm_manager.query("subsegments", [{"role": "user", "content": prompt}], sync=False)
         segments.append(seg_response)
         prompt_tracker.track(
-            f"deep_dive_segment_transcript_{subsegment['section']}",
+            f"deep_dive_segment_transcript_{subsegment['section'].replace(' ', '_')}",
             prompt,
             seg_response.get(),
             llm_manager.model_configs["subsegments"].name,
