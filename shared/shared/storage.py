@@ -66,7 +66,9 @@ class StorageManager:
                 io.BytesIO(content),
                 length=len(content),
                 content_type=content_type,
-                metadata=metadata.model_dump() if hasattr(metadata, "model_dump") else metadata,
+                metadata=metadata.model_dump()
+                if hasattr(metadata, "model_dump")
+                else metadata,
             )
         except Exception as e:
             logger.error(f"Failed to store file {filename} for job {job_id}: {str(e)}")
