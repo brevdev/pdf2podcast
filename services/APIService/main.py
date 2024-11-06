@@ -149,6 +149,16 @@ def process_pdf_task(
                             agent_result = requests.get(
                                 f"{AGENT_SERVICE_URL}/output/{job_id}"
                             ).json()
+
+                            # Store agent result in minio
+                            storage_manager.store_file(
+                                job_id,
+                                json.dumps(agent_result).encode(),
+                                f"{job_id}_agent_result.json",
+                                "application/json",
+                                transcription_params,
+                            )
+
                             requests.post(
                                 f"{TTS_SERVICE_URL}/generate_tts",
                                 json={

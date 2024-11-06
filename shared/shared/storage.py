@@ -48,6 +48,30 @@ class StorageManager:
             logger.error(f"Failed to ensure bucket exists: {e}")
             raise
 
+    def store_file(
+        self,
+        job_id: str,
+        content: bytes,
+        filename: str,
+        content_type: str,
+        metadata: dict = None,
+    ) -> None:
+        """
+        Store any file type in MinIO with metadata
+        """
+        try:
+            self.client.put_object(
+                self.bucket_name,
+                f"{job_id}/{filename}",
+                io.BytesIO(content),
+                length=len(content),
+                content_type=content_type,
+                metadata=metadata.model_dump() if hasattr(metadata, "model_dump") else metadata,
+            )
+        except Exception as e:
+            logger.error(f"Failed to store file {filename} for job {job_id}: {str(e)}")
+            raise
+
     def store_audio(
         self,
         job_id: str,
