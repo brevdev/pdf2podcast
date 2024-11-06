@@ -288,12 +288,15 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             )
             seg_response = llm_manager.query("reasoning", [{"role": "user", "content": prompt}], sync=False)
             segment_transcripts.append(seg_response)
-            prompt_tracker.track(f"segment_dialogue_{idx}", prompt, seg_response.get(), llm_manager.model_configs["reasoning"].name)
 
         # Combine transcripts
         job_manager.update_status(job_id, JobStatus.PROCESSING, "Combining segments")
         full_transcript = "\n".join([segment.get() for segment in segments])
         conversation = "\n".join([segment.get() for segment in segment_transcripts])
+
+        # Track each segment transcript
+        for idx, segment in enumerate(segments):
+            prompt_tracker.track(f"segment_transcript_{idx}", prompt, segment.get(), llm_manager.model_configs["reasoning"].name)
 
         # Fuse outline
         job_manager.update_status(job_id, JobStatus.PROCESSING, "Fusing outline")
