@@ -1,3 +1,7 @@
+# Env vars
+include .env
+export
+
 # Version for production deployment
 VERSION := 1.3
 
@@ -34,7 +38,7 @@ check_env:
 # Development target
 dev: check_env
 	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f docker-compose.yaml up --build
+	docker compose -f docker-compose.yaml --env-file .env up --build
 
 # Production target
 prod: check_env
