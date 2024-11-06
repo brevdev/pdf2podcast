@@ -267,7 +267,12 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
 
             if idx == longest_segment_idx:
                 ret = deep_dive_segment(
-                    job_id, request.markdown, segment, llm_manager, schema, prompt_tracker
+                    job_id,
+                    request.markdown,
+                    segment,
+                    llm_manager,
+                    schema,
+                    prompt_tracker,
                 )
                 segments.append(ret[0])
                 sub_outline = ret[1]
@@ -419,7 +424,9 @@ def deep_dive_segment(
     )
 
     prompt = OUTLINE_PROMPT.render(text=outline, schema=json.dumps(schema, indent=2))
-    outline_response = llm_manager.query("json", [{"role": "user", "content": prompt}], json_schema=schema)
+    outline_response = llm_manager.query(
+        "json", [{"role": "user", "content": prompt}], json_schema=schema
+    )
     prompt_tracker.track(
         "deep_dive_outline_json",
         prompt,
@@ -441,7 +448,9 @@ def deep_dive_segment(
             topic=subsegment["section"],
             angles="\n".join(subsegment["descriptions"]),
         )
-        seg_response = llm_manager.query("subsegments", [{"role": "user", "content": prompt}], sync=False)
+        seg_response = llm_manager.query(
+            "subsegments", [{"role": "user", "content": prompt}], sync=False
+        )
         segments.append(seg_response)
         prompt_tracker.track(
             f"deep_dive_segment_transcript_{subsegment['section'].replace(' ', '_')}",
