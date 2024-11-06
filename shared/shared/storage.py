@@ -56,9 +56,7 @@ class StorageManager:
         content_type: str,
         metadata: dict = None,
     ) -> None:
-        """
-        Store any file type in MinIO with metadata
-        """
+        """Store any file type in MinIO with metadata"""
         try:
             self.client.put_object(
                 self.bucket_name,
@@ -105,16 +103,6 @@ class StorageManager:
 
         except S3Error as e:
             logger.error(f"Failed to store audio in MinIO: {e}")
-            raise
-
-    def get_audio(self, job_id: str, filename: str):
-        try:
-            object_name = f"{job_id}/{filename}"
-            result = self.client.get_object(self.bucket_name, object_name).read()
-            logger.info(f"Retrieved audio for {job_id} from MinIO as {object_name}")
-            return result
-        except S3Error as e:
-            logger.error(f"Failed to get audio from MinIO: {e}")
             raise
 
     def list_files_metadata(self):

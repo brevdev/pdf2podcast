@@ -277,7 +277,8 @@ async def get_output(job_id: str):
     result = redis_client.get(f"result:{job_id}:{ServiceType.TTS}")
     if not result:
         logger.info(f"Final result not found in cache for {job_id}. Checking DB...")
-        result = storage_manager.get_audio(job_id, f"{job_id}.mp3")
+        # result = storage_manager.get_audio(job_id, f"{job_id}.mp3")
+        result = storage_manager.get_podcast_audio(job_id)
         if not result:
             raise HTTPException(status_code=404, detail="Result not found")
 
@@ -325,6 +326,20 @@ async def get_saved_podcasts():
             status_code=500, detail=f"Failed to retrieve saved podcasts: {str(e)}"
         )
 
+@app.get("/saved_podcast/{job_id}/metadata", response_model=SavedPodcast)
+async def get_saved_podcast_metadata(job_id: str):
+    """Get a specific saved podcast metadata"""
+    try:
+        saved_files = storage_manager.list_files_metadata()
+        podcast_metadata = next(
+            (file for file in saved_files if file["job_id"] == job_id), None
+        )
+        if not podcast_metadata:
+            raise HTTPException(status_code=404, detail=f"Podcast with job_id {job_id} not found")
+        return podcast_metadata
+    except Exception as e:
+        logger.error(f"Failed to get podcast metadata {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve podcast metadata: {str(e)}")
 
 @app.get("/saved_podcast/{job_id}", response_model=SavedPodcastWithAudio)
 async def get_saved_podcast(job_id: str):
