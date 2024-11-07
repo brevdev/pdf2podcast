@@ -1,5 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import ServiceType, JobStatus
+from shared.shared_types import ServiceType, JobStatus, DialogueEntry, Conversation
 from shared.storage import StorageManager
 from shared.job import JobStatusManager
 import flexagent as fa
@@ -29,15 +29,6 @@ logger = logging.getLogger(__name__)
 
 
 # Data Models
-class DialogueEntry(BaseModel):
-    text: str
-    speaker: Literal["speaker-1", "speaker-2"]
-
-
-class Conversation(BaseModel):
-    scratchpad: str
-    dialogue: List[DialogueEntry]
-
 
 class PodcastSegment(BaseModel):
     section: str

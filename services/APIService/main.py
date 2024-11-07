@@ -16,6 +16,7 @@ from shared.shared_types import (
     TranscriptionParams,
     SavedPodcast,
     SavedPodcastWithAudio,
+    Conversation,
 )
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
@@ -390,3 +391,29 @@ async def get_saved_podcast(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve podcast: {str(e)}"
         )
+
+@app.get("/saved_podcast/{job_id}/transcript", response_model=Conversation)
+async def get_saved_podcast_transcript(job_id: str):
+    """Get a specific saved podcast transcript"""
+    try:
+        saved_files = storage_manager.list_files_metadata()
+        agent_result_file = next((file for file in saved_files if file["filename"] == f"{job_id}_agent_result.json"), None)
+        if not agent_result_file:
+            raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
+        
+        # Get the raw data and validate it against the Conversation model
+        raw_data = storage_manager.get_podcast_audio(job_id)
+        agent_result = json.loads(raw_data)
+        return Conversation.model_validate(agent_result)
+        
+    except ValidationError as e:
+        logger.error(f"Validation error for transcript {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Invalid transcript format: {str(e)}")
+    except Exception as e:
+        logger.error(f"Failed to get transcript for {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {str(e)}")
+
+@app.get("/saved_podcast/{job_id}/agent_workflow")
+async def get_saved_podcast_agent_workflow(job_id: str):
+    """Get a specific saved podcast agent workflow"""
+    pass

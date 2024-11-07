@@ -1,5 +1,5 @@
-from pydantic import BaseModel, Field
-from typing import Optional, Dict
+from pydantic import BaseModel, Field       
+from typing import Optional, Dict, List, Literal
 from enum import Enum
 
 
@@ -47,7 +47,6 @@ class TranscriptionParams(BaseModel):
         },
     )
 
-
 class SavedPodcast(BaseModel):
     job_id: str
     filename: str
@@ -58,3 +57,12 @@ class SavedPodcast(BaseModel):
 
 class SavedPodcastWithAudio(SavedPodcast):
     audio_data: str
+
+class DialogueEntry(BaseModel):
+    text: str
+    speaker: Literal["speaker-1", "speaker-2"]
+
+
+class Conversation(BaseModel):
+    scratchpad: str
+    dialogue: List[DialogueEntry]
