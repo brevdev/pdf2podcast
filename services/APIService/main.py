@@ -395,17 +395,13 @@ async def get_saved_podcast(job_id: str):
 @app.get("/saved_podcast/{job_id}/transcript", response_model=Conversation)
 async def get_saved_podcast_transcript(job_id: str):
     """Get a specific saved podcast transcript"""
-    logger.info(f"Attempting to get transcript for job_id: {job_id}")
     try:
         filename = f"{job_id}_agent_result.json"
-        logger.info(f"Fetching file: {filename}")
         raw_data = storage_manager.get_file(job_id, filename)
         
         if not raw_data:
-            logger.warning(f"No transcript found for job_id: {job_id}")
             raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
         
-        logger.info(f"Successfully retrieved raw data, size: {len(raw_data)} bytes")    
         agent_result = json.loads(raw_data)
         return Conversation.model_validate(agent_result)
         

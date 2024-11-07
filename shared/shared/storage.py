@@ -131,17 +131,13 @@ class StorageManager:
         """Get any file from storage by job_id and filename"""
         try:
             object_name = f"{job_id}/{filename}"
-            logger.info(f"Attempting to get file: {object_name} from bucket: {self.bucket_name}")
             
             try:
                 data = self.client.get_object(self.bucket_name, object_name).read()
-                logger.info(f"Successfully retrieved file: {object_name}, size: {len(data)} bytes")
                 return data
             except S3Error as e:
                 if e.code == 'NoSuchKey':
-                    logger.warning(f"File not found: {object_name}")
                     return None
-                logger.error(f"S3Error while getting file {object_name}: {e.code} - {e.message}")
                 raise
                 
         except Exception as e:
