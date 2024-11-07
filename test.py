@@ -144,8 +144,10 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=5, retry_delay
 
 def test_saved_podcasts(base_url: str, job_id: str):
     """Test the saved podcasts endpoints"""
-    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints...")
-    
+    print(
+        f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints..."
+    )
+
     # Test 1: Get all saved podcasts
     print("\nTesting list all podcasts endpoint...")
     response = requests.get(f"{base_url}/saved_podcasts")
@@ -155,13 +157,17 @@ def test_saved_podcasts(base_url: str, job_id: str):
 
     # Verify our new job_id is in the list
     job_ids = [podcast["job_id"] for podcast in podcasts]
-    assert job_id in job_ids, f"Recently created job_id {job_id} not found in saved podcasts"
+    assert (
+        job_id in job_ids
+    ), f"Recently created job_id {job_id} not found in saved podcasts"
     print(f"Successfully found job_id {job_id} in saved podcasts list")
 
     # Test 2: Get specific podcast metadata
     print("\nTesting individual podcast metadata endpoint...")
     response = requests.get(f"{base_url}/saved_podcast/{job_id}/metadata")
-    assert response.status_code == 200, f"Failed to get podcast metadata: {response.text}"
+    assert (
+        response.status_code == 200
+    ), f"Failed to get podcast metadata: {response.text}"
     metadata = response.json()
     print(f"Retrieved metadata for podcast: {metadata.get('filename', 'unknown')}")
     print(f"Metadata: {json.dumps(metadata, indent=2)}")
