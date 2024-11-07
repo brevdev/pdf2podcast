@@ -13,7 +13,7 @@ import json
 import os
 import logging
 import time
-from prompts import (
+from prompts.prompts import (
     RAW_OUTLINE_PROMPT,
     OUTLINE_PROMPT,
     SEGMENT_TRANSCRIPT_PROMPT,
