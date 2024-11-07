@@ -62,7 +62,6 @@ class DialogueEntry(BaseModel):
     text: str
     speaker: Literal["speaker-1", "speaker-2"]
 
-
 class Conversation(BaseModel):
     scratchpad: str
     dialogue: List[DialogueEntry]

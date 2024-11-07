@@ -105,8 +105,47 @@ class StorageManager:
             logger.error(f"Failed to store audio in MinIO: {e}")
             raise
 
+    def get_podcast_audio(self, job_id: str) -> Optional[str]:
+        """Get the audio data for a specific podcast by job_id"""
+        try:
+            # Find the file with matching job_id
+            objects = self.client.list_objects(
+                self.bucket_name, prefix=f"{job_id}/", recursive=True
+            )
+
+            for obj in objects:
+                if obj.object_name.endswith(".mp3"):
+                    audio_data = self.client.get_object(
+                        self.bucket_name, obj.object_name
+                    ).read()
+                    return base64.b64encode(audio_data).decode("utf-8")
+
+            return None
+
+        except Exception as e:
+            logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
+            raise
+
+
+    def get_file(self, job_id: str, filename: str) -> Optional[bytes]:
+        """Get any file from storage by job_id and filename"""
+        try:
+            object_name = f"{job_id}/{filename}"
+            try:
+                data = self.client.get_object(self.bucket_name, object_name).read()
+                return data
+            except S3Error as e:
+                if e.code == 'NoSuchKey':
+                    return None
+                raise
+                
+        except Exception as e:
+            logger.error(f"Failed to get file {filename} for job_id {job_id}: {str(e)}")
+            raise
+
+    # TODO: rework
     def list_files_metadata(self):
-        """List all audio files stored in MinIO with their metadata but without audio content"""
+        """Lists metadata in the from of TranscriptionParams for an audio file which was created in store_audio"""
         try:
             objects = self.client.list_objects(self.bucket_name, recursive=True)
             files = []
@@ -162,25 +201,4 @@ class StorageManager:
 
         except Exception as e:
             logger.error(f"Failed to list files from MinIO: {str(e)}")
-            raise
-
-    def get_podcast_audio(self, job_id: str) -> Optional[str]:
-        """Get the audio data for a specific podcast by job_id"""
-        try:
-            # Find the file with matching job_id
-            objects = self.client.list_objects(
-                self.bucket_name, prefix=f"{job_id}/", recursive=True
-            )
-
-            for obj in objects:
-                if obj.object_name.endswith(".mp3"):
-                    audio_data = self.client.get_object(
-                        self.bucket_name, obj.object_name
-                    ).read()
-                    return base64.b64encode(audio_data).decode("utf-8")
-
-            return None
-
-        except Exception as e:
-            logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
             raise

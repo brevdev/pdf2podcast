@@ -401,7 +401,6 @@ async def get_saved_podcast_transcript(job_id: str):
         if not agent_result_file:
             raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
         
-        # Get the agent result JSON file instead of the audio file
         raw_data = storage_manager.get_file(job_id, f"{job_id}_agent_result.json")
         if not raw_data:
             raise HTTPException(status_code=404, detail=f"Transcript data for {job_id} not found")
