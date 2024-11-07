@@ -142,6 +142,38 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=5, retry_delay
     raise TimeoutError("Failed to get output after maximum retries")
 
 
+def test_saved_podcasts(base_url: str, job_id: str):
+    """Test the saved podcasts endpoints"""
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints...")
+    
+    # Test 1: Get all saved podcasts
+    print("\nTesting list all podcasts endpoint...")
+    response = requests.get(f"{base_url}/saved_podcasts")
+    assert response.status_code == 200, f"Failed to get saved podcasts: {response.text}"
+    podcasts = response.json()["podcasts"]
+    print(f"Found {len(podcasts)} saved podcasts")
+
+    # Verify our new job_id is in the list
+    job_ids = [podcast["job_id"] for podcast in podcasts]
+    assert job_id in job_ids, f"Recently created job_id {job_id} not found in saved podcasts"
+    print(f"Successfully found job_id {job_id} in saved podcasts list")
+
+    # Test 2: Get specific podcast metadata
+    print("\nTesting individual podcast metadata endpoint...")
+    response = requests.get(f"{base_url}/saved_podcast/{job_id}/metadata")
+    assert response.status_code == 200, f"Failed to get podcast metadata: {response.text}"
+    metadata = response.json()
+    print(f"Retrieved metadata for podcast: {metadata.get('filename', 'unknown')}")
+    print(f"Metadata: {json.dumps(metadata, indent=2)}")
+
+    # Test 3: Get specific podcast audio
+    print("\nTesting individual podcast audio endpoint...")
+    response = requests.get(f"{base_url}/saved_podcast/{job_id}/audio")
+    assert response.status_code == 200, f"Failed to get podcast audio: {response.text}"
+    audio_data = response.content
+    print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
+
+
 def test_api(base_url: str):
     # Define default voice mapping
     voice_mapping = {
@@ -222,6 +254,9 @@ def test_api(base_url: str):
         print(
             f"[{datetime.now().strftime('%H:%M:%S')}] Audio file saved as '{output_path}'"
         )
+
+        # Test saved podcasts endpoints with the newly created job_id
+        test_saved_podcasts(base_url, job_id)
 
     finally:
         monitor.stop()
