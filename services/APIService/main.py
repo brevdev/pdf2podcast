@@ -17,6 +17,7 @@ from shared.shared_types import (
     SavedPodcast,
     SavedPodcastWithAudio,
     Conversation,
+    PromptTracker,
 )
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
@@ -412,7 +413,18 @@ async def get_saved_podcast_transcript(job_id: str):
         logger.error(f"Failed to get transcript for {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {str(e)}")
 
-@app.get("/saved_podcast/{job_id}/agent_workflow")
+@app.get("/saved_podcast/{job_id}/history")
 async def get_saved_podcast_agent_workflow(job_id: str):
     """Get a specific saved podcast agent workflow"""
-    pass
+    try: 
+        filename = f"{job_id}_prompt_tracker.json"
+        raw_data = storage_manager.get_file(job_id, filename)
+        
+        if not raw_data:
+            raise HTTPException(status_code=404, detail=f"History for {job_id} not found")
+        
+        return PromptTracker.model_validate_json(raw_data)
+
+    except Exception as e:
+        logger.error(f"Failed to get history for {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve history: {str(e)}")
