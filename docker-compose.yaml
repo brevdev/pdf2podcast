@@ -18,8 +18,8 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - minio_data:/data
-    command: minio server /minio_data --console-address ":9001"
+      - ./data/minio:/data
+    command: minio server /data --console-address ":9001"
     networks:
       - app-network
     healthcheck:
@@ -48,21 +48,21 @@ services:
       - app-network
 
   agent-service:
-      build:
-        context: .
-        dockerfile: services/AgentService/Dockerfile
-      ports:
-        - "8964:8964"
-      environment:
-        - NIM_KEY=${NIM_KEY}
-        - REDIS_URL=redis://redis:6379
-        - MODEL_CONFIG_PATH=/app/config/models.json
-      volumes:
-        - ./models.json:/app/config/models.json
-      depends_on:
-        - redis
-      networks:
-        - app-network
+    build:
+      context: .
+      dockerfile: services/AgentService/Dockerfile
+    ports:
+      - "8964:8964"
+    environment:
+      - NIM_KEY=${NIM_KEY}
+      - REDIS_URL=redis://redis:6379
+      - MODEL_CONFIG_PATH=/app/config/models.json
+    volumes:
+      - ./models.json:/app/config/models.json
+    depends_on:
+      - redis
+    networks:
+      - app-network
 
   pdf-service:
     build:
@@ -95,7 +95,6 @@ services:
 
 volumes:
   redis_data:
-  minio_data:
 
 networks:
   app-network:

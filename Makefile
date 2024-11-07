@@ -37,12 +37,20 @@ check_env:
 
 # Development target
 dev: check_env
+	@if [ ! -d "data/minio" ]; then \
+		echo "$(GREEN)Creating data/minio directory...$(NC)"; \
+		mkdir -p data/minio; \
+	fi
 	docker compose down
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	docker compose -f docker-compose.yaml --env-file .env up --build
 
 # Production target
 prod: check_env
+	@if [ ! -d "data/minio" ]; then \
+		echo "$(GREEN)Creating data/minio directory...$(NC)"; \
+		mkdir -p data/minio; \
+	fi
 	docker compose down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up

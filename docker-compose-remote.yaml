@@ -17,8 +17,8 @@ services:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
     volumes:
-      - minio_data:/data
-    command: minio server /minio_data --console-address ":9001"
+      - ./data/minio:/data
+    command: minio server /data --console-address ":9001"
     networks:
       - app-network
     healthcheck:
@@ -81,7 +81,6 @@ services:
       - app-network
 volumes:
   redis_data:
-  minio_data:
 networks:
   app-network:
     driver: bridge
