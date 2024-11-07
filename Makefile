@@ -37,6 +37,7 @@ check_env:
 
 # Development target
 dev: check_env
+	docker compose down
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	docker compose -f docker-compose.yaml --env-file .env up --build
 
