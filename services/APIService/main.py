@@ -471,3 +471,40 @@ async def get_saved_podcast_pdf(job_id: str):
     except Exception as e:
         logger.error(f"Failed to get PDF for {job_id}: {str(e)}")
         raise HTTPException(status_code=500, detail=f"Failed to retrieve PDF: {str(e)}")
+
+@app.delete("/saved_podcast/{job_id}")
+async def delete_saved_podcast(job_id: str):
+    """Delete a specific saved podcast and all its associated files"""
+    try:
+        saved_files = storage_manager.list_files_metadata()
+        podcast_metadata = next(
+            (file for file in saved_files if file["job_id"] == job_id), None
+        )
+        
+        if not podcast_metadata:
+            raise HTTPException(
+                status_code=404, detail=f"Podcast with job_id {job_id} not found"
+            )
+            
+        success = storage_manager.delete_job_files(job_id)
+        
+        if not success:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to delete podcast {job_id}"
+            )
+            
+        # Also clean up any Redis entries
+        for service in ServiceType:
+            redis_client.delete(f"status:{job_id}:{service}")
+            redis_client.delete(f"result:{job_id}:{service}")
+        redis_client.delete(f"final_status:{job_id}")
+            
+        return {"message": f"Successfully deleted podcast {job_id}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete podcast {job_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete podcast: {str(e)}"
+        )
