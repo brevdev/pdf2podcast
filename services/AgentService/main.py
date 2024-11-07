@@ -179,7 +179,7 @@ class PromptTracker:
     def save(self, storage_manager: StorageManager):
         storage_manager.store_file(
             self.job_id,
-            json.dumps(self.steps).encode(),
+            json.dumps({"steps": self.steps}).encode(),
             f"{self.job_id}_prompt_tracker.json",
             "application/json",
         )
