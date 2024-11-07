@@ -1,5 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import ServiceType, JobStatus, DialogueEntry, Conversation
+from shared.shared_types import ServiceType, JobStatus, Conversation
 from shared.storage import StorageManager
 from shared.job import JobStatusManager
 import flexagent as fa
@@ -8,7 +8,7 @@ from flexagent.engine import Value
 from pydantic import BaseModel
 from pathlib import Path
 from dataclasses import dataclass
-from typing import List, Literal, Dict, Optional, Any
+from typing import List, Dict, Optional, Any
 import json
 import os
 import logging
@@ -29,6 +29,7 @@ logger = logging.getLogger(__name__)
 
 
 # Data Models
+
 
 class PodcastSegment(BaseModel):
     section: str

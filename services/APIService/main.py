@@ -393,38 +393,50 @@ async def get_saved_podcast(job_id: str):
             status_code=500, detail=f"Failed to retrieve podcast: {str(e)}"
         )
 
+
 @app.get("/saved_podcast/{job_id}/transcript", response_model=Conversation)
 async def get_saved_podcast_transcript(job_id: str):
     """Get a specific saved podcast transcript"""
     try:
         filename = f"{job_id}_agent_result.json"
         raw_data = storage_manager.get_file(job_id, filename)
-        
+
         if not raw_data:
-            raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"Transcript for {job_id} not found"
+            )
+
         agent_result = json.loads(raw_data)
         return Conversation.model_validate(agent_result)
-        
+
     except ValidationError as e:
         logger.error(f"Validation error for transcript {job_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Invalid transcript format: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Invalid transcript format: {str(e)}"
+        )
     except Exception as e:
         logger.error(f"Failed to get transcript for {job_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve transcript: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve transcript: {str(e)}"
+        )
+
 
 @app.get("/saved_podcast/{job_id}/history")
 async def get_saved_podcast_agent_workflow(job_id: str):
     """Get a specific saved podcast agent workflow"""
-    try: 
+    try:
         filename = f"{job_id}_prompt_tracker.json"
         raw_data = storage_manager.get_file(job_id, filename)
-        
+
         if not raw_data:
-            raise HTTPException(status_code=404, detail=f"History for {job_id} not found")
-        
+            raise HTTPException(
+                status_code=404, detail=f"History for {job_id} not found"
+            )
+
         return PromptTracker.model_validate_json(raw_data)
 
     except Exception as e:
         logger.error(f"Failed to get history for {job_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to retrieve history: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve history: {str(e)}"
+        )

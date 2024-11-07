@@ -126,20 +126,19 @@ class StorageManager:
             logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
             raise
 
-
     def get_file(self, job_id: str, filename: str) -> Optional[bytes]:
         """Get any file from storage by job_id and filename"""
         try:
             object_name = f"{job_id}/{filename}"
-            
+
             try:
                 data = self.client.get_object(self.bucket_name, object_name).read()
                 return data
             except S3Error as e:
-                if e.code == 'NoSuchKey':
+                if e.code == "NoSuchKey":
                     return None
                 raise
-                
+
         except Exception as e:
             logger.error(f"Failed to get file {filename} for job_id {job_id}: {str(e)}")
             raise
