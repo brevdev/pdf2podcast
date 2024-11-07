@@ -150,14 +150,14 @@ class StorageManager:
             objects = self.client.list_objects(
                 self.bucket_name, prefix=f"{job_id}/", recursive=True
             )
-            
+
             # Delete each object
             for obj in objects:
                 self.client.remove_object(self.bucket_name, obj.object_name)
                 logger.info(f"Deleted object: {obj.object_name}")
-                
+
             return True
-            
+
         except Exception as e:
             logger.error(f"Failed to delete files for job_id {job_id}: {str(e)}")
             return False
