@@ -8,3 +8,4 @@ get_helm.sh
 .env
 .ruff_cache
 data/minio
+eval.txt

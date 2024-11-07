@@ -117,6 +117,15 @@ def process_pdf_task(
             data={"job_id": job_id},
         )
 
+        storage_manager.store_file(
+            job_id,
+            file_content,
+            f"{job_id}.pdf",
+            "application/pdf",
+            transcription_params,
+        )
+        logger.info(f"Stored original PDF for {job_id} in storage")
+
         # Monitor services
         current_service = ServiceType.PDF
         while True:
@@ -439,4 +448,27 @@ async def get_saved_podcast_agent_workflow(job_id: str):
         logger.error(f"Failed to get history for {job_id}: {str(e)}")
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve history: {str(e)}"
+        )
+
+@app.get("/saved_podcast/{job_id}/pdf")
+async def get_saved_podcast_pdf(job_id: str):
+    """Get the original PDF file for a specific podcast"""
+    try:
+        pdf_data = storage_manager.get_file(job_id, f"{job_id}.pdf")
+        
+        if not pdf_data:
+            raise HTTPException(
+                status_code=404, detail=f"PDF for podcast {job_id} not found"
+            )
+            
+        return Response(
+            content=pdf_data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={job_id}.pdf"},
+        )
+        
+    except Exception as e:
+        logger.error(f"Failed to get PDF for {job_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to retrieve PDF: {str(e)}"
         )
