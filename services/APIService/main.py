@@ -396,14 +396,9 @@ async def get_saved_podcast(job_id: str):
 async def get_saved_podcast_transcript(job_id: str):
     """Get a specific saved podcast transcript"""
     try:
-        saved_files = storage_manager.list_files_metadata()
-        agent_result_file = next((file for file in saved_files if file["filename"] == f"{job_id}_agent_result.json"), None)
-        if not agent_result_file:
-            raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
-        
         raw_data = storage_manager.get_file(job_id, f"{job_id}_agent_result.json")
         if not raw_data:
-            raise HTTPException(status_code=404, detail=f"Transcript data for {job_id} not found")
+            raise HTTPException(status_code=404, detail=f"Transcript for {job_id} not found")
             
         agent_result = json.loads(raw_data)
         return Conversation.model_validate(agent_result)
