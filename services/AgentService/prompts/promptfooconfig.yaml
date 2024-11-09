@@ -1,11 +1,13 @@
-# File: tests/e2e_test.yaml
 description: "Complete End-to-End Podcast Generation Test"
+evaluateOptions:
+  maxConcurrency: 1
+  showProgressBar: true
 
 prompts:
-  # - name: "raw_outline"
-  - "file://./prompts.py:PodcastPrompts.raw_outline_prompt"
-  # - name: "outline"
-  #   file: "./prompts.py:PodcastPrompts.outline_prompt"
+  - id: "./prompts.py:PodcastPrompts.raw_outline_prompt"
+    label: "raw_outline"
+  - id: "./prompts.py:PodcastPrompts.outline_prompt"
+    label: "outline"
   # - name: "segment_transcript"
   #   file: "../prompts.py:PodcastPrompts.segment_transcript_prompt"
   # - name: "deep_dive"
@@ -35,6 +37,7 @@ tests:
     vars:
       text: file://./eval.txt
       duration: 15
+    storeOutputAs: raw_outline_output
     assert:
       - type: llm-rubric
         value: |
@@ -46,16 +49,15 @@ tests:
           Pass if all scores >= 0.95
         provider: "file://./nim-provider.py"
 
-  # # Step 2: JSON Outline
-  # - description: "JSON Outline Conversion"
-  #   vars:
-  #     text: "{{previousOutput}}"
-  #     schema: file://tests/schemas/podcast_outline.json
-  #   prompt: outline
-  #   assert:
-  #     - type: contains-json
-  #     - type: json-schema
-  #       value: file://tests/schemas/podcast_outline.json
+  # Step 2: JSON Outline
+  - description: "JSON Outline Conversion"
+    vars:
+      text: "{{raw_outline_output}}"
+      schema: file://tests/schemas/podcast_outline.json
+    prompt: outline
+    assert:
+      - type: contains-json
+        value: file://tests/schemas/podcast_outline.json
 
   # # Step 3: Segment Processing
   # - description: "Segment Transcript Generation"

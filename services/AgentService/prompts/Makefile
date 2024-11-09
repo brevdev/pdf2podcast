@@ -36,7 +36,7 @@ setup-test: ensure-promptfoo
 # Run end-to-end test
 test-e2e: setup-test
 	@echo "$(GREEN)Running end-to-end tests...$(NC)"
-	npx promptfoo@latest eval 
+	npx promptfoo@latest eval --output $(OUTPUTS_DIR)/out.html
 
 # Run original config
 test-basic: ensure-promptfoo
