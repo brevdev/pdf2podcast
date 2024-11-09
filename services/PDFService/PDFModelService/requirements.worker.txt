@@ -5,3 +5,11 @@ opencv-contrib-python==4.8.0.74
 torch
 torchvision
 docling==2.2.0
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-redis
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-httpx
+opentelemetry-instrumentation-urllib3

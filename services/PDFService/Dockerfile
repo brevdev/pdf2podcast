@@ -9,7 +9,16 @@ RUN pip install --no-cache-dir \
     python-multipart \
     httpx \
     redis \
-    asyncio
+    asyncio \
+    requests \
+    opentelemetry-api \
+    opentelemetry-sdk \
+    opentelemetry-instrumentation-fastapi \
+    opentelemetry-instrumentation-requests \
+    opentelemetry-instrumentation-redis \
+    opentelemetry-exporter-otlp-proto-grpc \
+    opentelemetry-instrumentation-httpx \
+    opentelemetry-instrumentation-urllib3
 
 # Copy shared package
 COPY shared /shared

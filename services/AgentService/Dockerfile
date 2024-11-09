@@ -11,7 +11,14 @@ RUN apt-get update && apt-get install -y \
 RUN mkdir -p /app/config
 
 # Install Python dependencies
-RUN pip install fastapi uvicorn pydantic python-dotenv jinja2 redis minio
+RUN pip install fastapi uvicorn pydantic python-dotenv jinja2 redis minio opentelemetry-api \
+    opentelemetry-sdk \
+    opentelemetry-instrumentation-fastapi \
+    opentelemetry-instrumentation-requests \
+    opentelemetry-instrumentation-redis \
+    opentelemetry-exporter-otlp-proto-grpc \
+    opentelemetry-instrumentation-httpx \
+    opentelemetry-instrumentation-urllib3
 
 # Install flexagent
 COPY services/AgentService/flexagent /app/flexagent
