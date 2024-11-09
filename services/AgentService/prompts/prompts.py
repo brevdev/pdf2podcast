@@ -149,31 +149,32 @@ FUSE_OUTLINE_PROMPT = jinja2.Template(FUSE_OUTLINE_PROMPT_STR)
 REVISE_PROMPT = jinja2.Template(REVISE_PROMPT_STR)
 PODCAST_DIALOGUE_PROMPT = jinja2.Template(PODCAST_DIALOGUE_PROMPT_STR)
 
+
 # Class to hold all prompts
 class PodcastPrompts:
     def raw_outline_prompt(self):
         return RAW_OUTLINE_PROMPT_STR
-    
+
     def outline_prompt(self):
         return OUTLINE_PROMPT_STR
-    
+
     def segment_transcript_prompt(self):
         return SEGMENT_TRANSCRIPT_PROMPT_STR
-    
+
     def deep_dive_prompt(self):
         return DEEP_DIVE_PROMPT_STR
-    
+
     def transcript_prompt(self):
         return TRANSCRIPT_PROMPT_STR
-    
+
     def raw_podcast_dialogue_prompt_v2(self):
         return RAW_PODCAST_DIALOGUE_PROMPT_V2_STR
-    
+
     def fuse_outline_prompt(self):
         return FUSE_OUTLINE_PROMPT_STR
-    
+
     def revise_prompt(self):
         return REVISE_PROMPT_STR
-    
+
     def podcast_dialogue_prompt(self):
         return PODCAST_DIALOGUE_PROMPT_STR
