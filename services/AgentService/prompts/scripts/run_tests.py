@@ -19,7 +19,7 @@ class PromptTestRunner:
         print(f"\n=== Running stage: {config_path.stem} ===")
         
         # Create output path for this stage
-        output_path = self.outputs_dir / f"{config_path.stem}_results.html"
+        output_path = self.outputs_dir / f"{config_path.stem}_results.json"
         
         result = subprocess.run(
             ["promptfoo", "eval", 

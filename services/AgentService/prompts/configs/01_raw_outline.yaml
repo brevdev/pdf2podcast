@@ -4,8 +4,7 @@ evaluateOptions:
   showProgressBar: true
 
 prompts:
-  - id: "../prompts.py:PodcastPrompts.raw_outline_prompt"
-    label: "raw_outline"
+  - "file://../prompts.py:PodcastPrompts.raw_outline_prompt"
 
 providers:
   - id: "file://../scripts/nim-provider.py"

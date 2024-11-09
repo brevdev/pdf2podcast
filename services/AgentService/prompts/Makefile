@@ -44,7 +44,7 @@ test-upto: setup-test
 	@cd $(CONFIG_DIR) && python ../scripts/run_tests.py --up-to $(stage)
 
 # List all available test stages
-test-list: setup-test
+test-list:
 	@echo "$(GREEN)Listing available test stages...$(NC)"
 	@python scripts/run_tests.py --list
 
