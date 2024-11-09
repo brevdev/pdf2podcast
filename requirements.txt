@@ -1,0 +1,24 @@
+# Core dependencies
+fastapi
+uvicorn[standard]
+python-multipart
+pydantic
+redis
+websockets
+asyncio
+minio
+httpx
+jinja2
+ruff
+
+# Service-specific dependencies
+elevenlabs
+docling==2.2.0
+celery[redis]
+dill
+requests
+openai
+anthropic
+
+# Development dependencies
+pytest

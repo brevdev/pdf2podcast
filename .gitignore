@@ -2,6 +2,8 @@
 __pycache__
 tmp
 .venv
+.uv/
+**/*.egg-info
 **/output.mp3
 kompose
 get_helm.sh

@@ -143,6 +143,25 @@ class StorageManager:
             logger.error(f"Failed to get file {filename} for job_id {job_id}: {str(e)}")
             raise
 
+    def delete_job_files(self, job_id: str) -> bool:
+        """Delete all files associated with a job_id"""
+        try:
+            # List all objects with the job_id prefix
+            objects = self.client.list_objects(
+                self.bucket_name, prefix=f"{job_id}/", recursive=True
+            )
+
+            # Delete each object
+            for obj in objects:
+                self.client.remove_object(self.bucket_name, obj.object_name)
+                logger.info(f"Deleted object: {obj.object_name}")
+
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to delete files for job_id {job_id}: {str(e)}")
+            return False
+
     # TODO: rework
     def list_files_metadata(self):
         """Lists metadata in the from of TranscriptionParams for an audio file which was created in store_audio"""

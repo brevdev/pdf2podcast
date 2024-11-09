@@ -117,6 +117,15 @@ def process_pdf_task(
             data={"job_id": job_id},
         )
 
+        storage_manager.store_file(
+            job_id,
+            file_content,
+            f"{job_id}.pdf",
+            "application/pdf",
+            transcription_params,
+        )
+        logger.info(f"Stored original PDF for {job_id} in storage")
+
         # Monitor services
         current_service = ServiceType.PDF
         while True:
@@ -440,3 +449,71 @@ async def get_saved_podcast_agent_workflow(job_id: str):
         raise HTTPException(
             status_code=500, detail=f"Failed to retrieve history: {str(e)}"
         )
+
+
+@app.get("/saved_podcast/{job_id}/pdf")
+async def get_saved_podcast_pdf(job_id: str):
+    """Get the original PDF file for a specific podcast"""
+    try:
+        pdf_data = storage_manager.get_file(job_id, f"{job_id}.pdf")
+
+        if not pdf_data:
+            raise HTTPException(
+                status_code=404, detail=f"PDF for podcast {job_id} not found"
+            )
+
+        return Response(
+            content=pdf_data,
+            media_type="application/pdf",
+            headers={"Content-Disposition": f"attachment; filename={job_id}.pdf"},
+        )
+
+    except Exception as e:
+        logger.error(f"Failed to get PDF for {job_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to retrieve PDF: {str(e)}")
+
+
+@app.delete("/saved_podcast/{job_id}")
+async def delete_saved_podcast(job_id: str):
+    """Delete a specific saved podcast and all its associated files"""
+    try:
+        saved_files = storage_manager.list_files_metadata()
+        podcast_metadata = next(
+            (file for file in saved_files if file["job_id"] == job_id), None
+        )
+
+        if not podcast_metadata:
+            raise HTTPException(
+                status_code=404, detail=f"Podcast with job_id {job_id} not found"
+            )
+
+        success = storage_manager.delete_job_files(job_id)
+
+        if not success:
+            raise HTTPException(
+                status_code=500, detail=f"Failed to delete podcast {job_id}"
+            )
+
+        # Also clean up any Redis entries
+        for service in ServiceType:
+            redis_client.delete(f"status:{job_id}:{service}")
+            redis_client.delete(f"result:{job_id}:{service}")
+        redis_client.delete(f"final_status:{job_id}")
+
+        return {"message": f"Successfully deleted podcast {job_id}"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Failed to delete podcast {job_id}: {str(e)}")
+        raise HTTPException(
+            status_code=500, detail=f"Failed to delete podcast: {str(e)}"
+        )
+
+
+@app.get("/health")
+def health():
+    return {
+        "status": "healthy",
+        "service": "api",
+    }

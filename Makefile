@@ -3,7 +3,7 @@ include .env
 export
 
 # Version for production deployment
-VERSION := 1.6
+VERSION := 1.8
 
 # Docker registry and project
 REGISTRY := nvcr.io/pfteb4cqjzrs/playground
@@ -34,6 +34,11 @@ check_env:
 			echo "$(GREEN)✓ $$var is set$(NC)"; \
 		fi \
 	done
+
+# UV environment setup target
+uv:
+	@echo "$(GREEN)Setting up UV environment...$(NC)"
+	@bash setup.sh
 
 # Development target
 dev: check_env
@@ -80,4 +85,4 @@ format:
 
 ruff: lint format
 
-.PHONY: check_env dev clean ruff prod version-bump
+.PHONY: check_env dev clean ruff prod version-bump uv
