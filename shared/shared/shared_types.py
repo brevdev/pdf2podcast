@@ -82,3 +82,14 @@ class ProcessingStep(BaseModel):
 
 class PromptTracker(BaseModel):
     steps: List[ProcessingStep]
+
+
+class PodcastSegment(BaseModel):
+    section: str
+    descriptions: List[str]
+    duration: int
+
+
+class PodcastOutline(BaseModel):
+    title: str
+    segments: List[PodcastSegment]
