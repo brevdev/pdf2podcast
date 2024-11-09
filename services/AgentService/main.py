@@ -15,7 +15,7 @@ import json
 import os
 import logging
 import time
-from prompts.prompts import (
+from prompts import (
     RAW_OUTLINE_PROMPT,
     OUTLINE_PROMPT,
     SEGMENT_TRANSCRIPT_PROMPT,
