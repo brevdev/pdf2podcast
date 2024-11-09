@@ -1,27 +1,172 @@
-# yaml-language-server: $schema=https://promptfoo.dev/config-schema.json
-
-# Learn more about building a configuration: https://promptfoo.dev/docs/configuration/guide
-
-description: "Podcast Prompts"
+# File: tests/e2e_test.yaml
+description: "Complete End-to-End Podcast Generation Test"
 
 prompts:
-  - file://./prompts_iter.py:PodcastPrompts.raw_outline_prompt
+  # - name: "raw_outline"
+  - "file://./prompts.py:PodcastPrompts.raw_outline_prompt"
+  # - name: "outline"
+  #   file: "./prompts.py:PodcastPrompts.outline_prompt"
+  # - name: "segment_transcript"
+  #   file: "../prompts.py:PodcastPrompts.segment_transcript_prompt"
+  # - name: "deep_dive"
+  #   file: "../prompts.py:PodcastPrompts.deep_dive_prompt"
+  # - name: "transcript"
+  #   file: "../prompts.py:PodcastPrompts.transcript_prompt"
+  # - name: "raw_podcast_dialogue"
+  #   file: "../prompts.py:PodcastPrompts.raw_podcast_dialogue_prompt_v2"
+  # - name: "fuse_outline"
+  #   file: "../prompts.py:PodcastPrompts.fuse_outline_prompt"
+  # - name: "revise"
+  #   file: "../prompts.py:PodcastPrompts.revise_prompt"
+  # - name: "podcast_dialogue"
+  #   file: "../prompts.py:PodcastPrompts.podcast_dialogue_prompt"
 
 providers:
-  - id: "https://integrate.api.nvidia.com/v1/chat/completions"
+  - id: "file://./nim-provider.py"
+    label: "405b"
     config:
-      method: "POST"
-      headers:
-        "Content-Type": "application/json"
-        "Authorization": "Bearer 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"
-      body:
-        model: "meta/llama-3.1-405b-instruct"
-        messages:
-          - role: "user"
-            content: "{{prompt}}"
-      responseParser: "json.choices[0].message.content"
+      api_base: "https://youngthug.demoz.io"
+      model: "meta/llama-3.1-405b-instruct"
+      temperature: 0.7
+      max_tokens: 1000
 
 tests:
-  - vars:
-      duration: 10
+  - description: "Raw Outline Generation"
+    vars:
       text: file://./eval.txt
+      duration: 15
+    assert:
+      - type: llm-rubric
+        value: |
+          Evaluate if the outline:
+          1. Has clear sections for background, innovation, impact, and future work
+          2. Makes innovation the focus
+          3. Allocates time appropriately for {{duration}} minutes
+          4. Maintains technical accuracy while being accessible
+          Pass if all scores >= 0.95
+        provider: "file://./nim-provider.py"
+
+  # # Step 2: JSON Outline
+  # - description: "JSON Outline Conversion"
+  #   vars:
+  #     text: "{{previousOutput}}"
+  #     schema: file://tests/schemas/podcast_outline.json
+  #   prompt: outline
+  #   assert:
+  #     - type: contains-json
+  #     - type: json-schema
+  #       value: file://tests/schemas/podcast_outline.json
+
+  # # Step 3: Segment Processing
+  # - description: "Segment Transcript Generation"
+  #   vars:
+  #     text: file://tests/inputs/sample.txt
+  #     duration: 5
+  #     topic: "Neural Network Architecture"
+  #     angles: "Technical implementation, Results, Impact"
+  #   prompt: segment_transcript
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Check if the transcript:
+  #         1. Explains concepts clearly for no prior knowledge
+  #         2. Uses analogies and examples
+  #         3. Addresses potential questions
+  #         4. Provides comprehensive context
+  #         5. Fits {{duration}} minute length
+  #         Pass if all >= 0.7
+
+  # # Step 4: Deep Dive Analysis
+  # - description: "Deep Dive Processing"
+  #   vars:
+  #     text: file://tests/inputs/sample.txt
+  #     topic: "Neural Networks for Climate Prediction"
+  #     duration: 7
+  #   prompt: deep_dive
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Verify the deep dive:
+  #         1. Expands content with details and examples
+  #         2. Creates clear topic/subtopic structure
+  #         3. Maintains focus on important aspects
+  #         4. Fits {{duration}} minute timeframe
+  #         Pass if all >= 0.75
+
+  # # Step 5: Transcript Combination
+  # - description: "Transcript Combination"
+  #   vars:
+  #     segments: [["First segment content", 5], ["Second segment content", 5]]
+  #   prompt: transcript
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Check if combined transcript:
+  #         1. Maintains all original content
+  #         2. Has natural flow between segments
+  #         3. Keeps storytelling elements
+  #         Pass if all >= 0.7
+
+  # # Step 6: Raw Dialogue Generation
+  # - description: "Raw Podcast Dialogue"
+  #   vars:
+  #     text: "{{previousOutput}}"
+  #     duration: 15
+  #     speaker_1_name: "Dr. Sarah"
+  #     speaker_2_name: "Prof. Mike"
+  #     descriptions: "Neural Networks, Climate Prediction"
+  #   prompt: raw_podcast_dialogue
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Evaluate dialogue:
+  #         1. Natural conversation with appropriate fillers
+  #         2. Good speaker alternation
+  #         3. Maintains technical accuracy
+  #         4. Includes required conversation elements
+  #         Pass if all >= 0.75
+
+  # # Step 7: Outline Fusion
+  # - description: "Outline Fusion"
+  #   vars:
+  #     overall_outline: "Main outline content"
+  #     sub_outline: "Detailed section outline"
+  #   prompt: fuse_outline
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Check if fused outline:
+  #         1. Combines both outlines without loss
+  #         2. Maintains proper structure
+  #         3. Uses correct time budgets
+  #         Pass if all >= 0.7
+
+  # # Step 8: Dialogue Revision
+  # - description: "Dialogue Revision"
+  #   vars:
+  #     outline: "Podcast outline"
+  #     raw_transcript: "Raw content"
+  #     dialogue_transcript: "Initial dialogue"
+  #   prompt: revise
+  #   assert:
+  #     - type: llm-rubric
+  #       value: |
+  #         Verify revised dialogue:
+  #         1. Natural conversation flow
+  #         2. Proper speaker exchanges
+  #         3. No explicit transitions
+  #         4. No information loss
+  #         Pass if all >= 0.8
+
+  # # Step 9: Final JSON Conversion
+  # - description: "Final JSON Format"
+  #   vars:
+  #     text: "{{previousOutput}}"
+  #     schema: file://tests/schemas/conversation.json
+  #     speaker_1_name: "Dr. Sarah"
+  #     speaker_2_name: "Prof. Mike"
+  #   prompt: podcast_dialogue
+  #   assert:
+  #     - type: contains-json
+  #     - type: json-schema
+  #       value: file://tests/schemas/conversation.json
