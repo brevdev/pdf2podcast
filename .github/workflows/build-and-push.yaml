@@ -85,6 +85,52 @@ jobs:
           push: true
           tags: nvcr.io/pfteb4cqjzrs/playground/pdf-service:${{ needs.setup.outputs.version }}
 
+  pdf-model-api:
+    needs: setup
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: nvcr.io
+          username: ${{ secrets.NVCR_USERNAME }}
+          password: ${{ secrets.NVCR_TOKEN }}
+      - name: Build and push pdf-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/PDFService/PDFModelService/Dockerfile.api
+          push: true
+          tags: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:${{ needs.setup.outputs.version }}
+  
+  pdf-model-worker:
+    needs: setup
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Login to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: nvcr.io
+          username: ${{ secrets.NVCR_USERNAME }}
+          password: ${{ secrets.NVCR_TOKEN }}
+      - name: Build and push pdf-service
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: services/PDFService/PDFModelService/Dockerfile.worker
+          push: true
+          tags: nvcr.io/pfteb4cqjzrs/playground/pdf-model-worker:${{ needs.setup.outputs.version }}
+
   tts-service:
     needs: setup
     runs-on: ubuntu-latest

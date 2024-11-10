@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   pdf-api:
-    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:1.0
+    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:${VERSION}
     ports:
       - "8003:8003"
     environment:
@@ -19,7 +19,7 @@ services:
     restart: unless-stopped
 
   celery-worker:
-    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-worker:1.0
+    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-worker:${VERSION}
     environment:
       - CELERY_BROKER_URL=redis://redis:6379/0
       - CELERY_RESULT_BACKEND=redis://redis:6379/0

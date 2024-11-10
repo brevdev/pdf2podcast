@@ -80,22 +80,21 @@ services:
       - redis
     networks:
       - app-network
-
-    jaeger:
-      image: jaegertracing/all-in-one:latest
-      ports:
-        - "16686:16686" # UI
-        - "4317:4317" # OTLP GRPC
-        - "4318:4318" # OTLP HTTP
-      environment:
-        - COLLECTOR_OTLP_ENABLED=true
-      healthcheck:
-        test: ["CMD", "wget", "--spider", "localhost:16686"]
-        interval: 5s
-        timeout: 3s
-        retries: 3
-      networks:
-        - app-network
+  jaeger:
+    image: jaegertracing/all-in-one:latest
+    ports:
+      - "16686:16686" # UI
+      - "4317:4317" # OTLP GRPC
+      - "4318:4318" # OTLP HTTP
+    environment:
+      - COLLECTOR_OTLP_ENABLED=true
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "localhost:16686"]
+      interval: 5s
+      timeout: 3s
+      retries: 3
+    networks:
+      - app-network
 
 volumes:
   redis_data:

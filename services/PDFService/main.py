@@ -87,7 +87,7 @@ async def convert_pdf_to_markdown(pdf_path: str) -> str:
                                 status_code=500,
                                 detail="Server returned success but no result was found",
                             )
-                        elif status_response.status_code == 425:
+                        elif status_response.status_code == 202:
                             # Task still processing
                             logger.info("Task still processing, waiting 2 seconds...")
                             await asyncio.sleep(2)

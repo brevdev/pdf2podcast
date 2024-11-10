@@ -17,7 +17,7 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=10, retry_dela
             response = requests.get(f"{base_url}/output/{job_id}")
             if response.status_code == 200:
                 return response.content
-            elif response.status_code == 425:
+            elif response.status_code == 202:
                 # Result is being prepared, use shorter delay
                 wait_time = min(retry_delay * (1.5**attempt), 10)  # Cap at 10 seconds
                 print(

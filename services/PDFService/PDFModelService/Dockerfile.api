@@ -12,11 +12,11 @@ RUN apt-get update \
 WORKDIR /app
 
 # Install Python dependencies - only API requirements
-COPY requirements.api.txt /app/
+COPY services/PDFService/PDFModelService/requirements.api.txt /app/
 RUN pip install -r requirements.api.txt
 
 # Copy application files
-COPY main.py tasks.py /app/
+COPY services/PDFService/PDFModelService/main.py services/PDFService/PDFModelService/tasks.py /app/
 
 # Create directory for temporary files
 RUN mkdir -p /tmp/pdf_conversions
