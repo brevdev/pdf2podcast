@@ -12,3 +12,4 @@ get_helm.sh
 data/minio
 eval.txt
 services/AgentService/prompts/tests
+.DS_Store
