@@ -2,16 +2,16 @@ description: "02 Outline JSON Generation"
 evaluateOptions:
   maxConcurrency: 1
   showProgressBar: true
+
 prompts:
   - "file://../prompts.py:PodcastPrompts.outline_prompt"
+
 providers:
-  - id: "file://../scripts/nim-provider.py"
-    label: "405b"
+  - id: "file://../providers/nim-8b.py"
+    label: "8b"
     config:
-      api_base: "https://youngthug.demoz.io"
-      model: "meta/llama-3.1-405b-instruct"
-      temperature: 0.7
-      max_tokens: 1000
+      json_schema: file://../tests/schemas/podcast_outline.json
+
 tests:
   - description: "Outline JSON Generation"
     vars:

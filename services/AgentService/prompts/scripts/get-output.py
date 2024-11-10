@@ -1,8 +1,10 @@
 import json
+import os
 
 def get_transform(vars, context):
     """
-    Transform function for promptfoo that extracts just the output field from evaluation results JSON.
+    Transform function for promptfoo that extracts the output field from evaluation results JSON
+    while preserving other variables.
     
     Args:
         vars (dict): Variables passed from promptfoo config
@@ -12,21 +14,18 @@ def get_transform(vars, context):
         dict: Transformed variables including the extracted output
     """
     try:
-        # Read the JSON file content - it will be in vars['text']
-        data = json.loads(vars['text'])
+        # Remove 'file://' prefix if present and get absolute path
+        file_path = vars['text'].replace('file://', '')
         
-        # Navigate through the JSON structure to find the output
-        results = data['results']
-        if isinstance(results, dict) and 'results' in results:
-            for result in results['results']:
-                if 'response' in result and 'output' in result['response']:
-                    # Return the original vars dict with our new transformed text
-                    return {
-                        **vars,
-                        'text': result['response']['output']
-                    }
-                    
-        raise ValueError("Could not find output in the JSON structure")
+        # Read and parse the JSON file directly without joining paths
+        with open(file_path, 'r') as f:
+            data = json.load(f)
+            
+        # Extract the output and return all vars with transformed text
+        return {
+            **vars,
+            'text': data['results']['results'][0]['response']['output']
+        }
         
     except Exception as e:
         print(f"Error transforming variables: {e}")

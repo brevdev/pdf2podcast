@@ -7,13 +7,8 @@ prompts:
   - "file://../prompts.py:PodcastPrompts.raw_outline_prompt"
 
 providers:
-  - id: "file://../scripts/nim-provider.py"
+  - id: "file://../providers/nim-405b.py"
     label: "405b"
-    config:
-      api_base: "https://youngthug.demoz.io"
-      model: "meta/llama-3.1-405b-instruct"
-      temperature: 0.7
-      max_tokens: 1000
 
 tests:
   - description: "Raw Outline Generation"
