@@ -1,0 +1,25 @@
+description: "02 Outline JSON Generation"
+evaluateOptions:
+  maxConcurrency: 1
+  showProgressBar: true
+
+prompts:
+  - "file://../prompts.py:PodcastPrompts.outline_prompt"
+
+providers:
+  - id: "file://../providers/nim-8b.py"
+    label: "8b"
+    config:
+      json_schema: file://../tests/schemas/podcast_outline.json
+
+tests:
+  - description: "Outline JSON Generation"
+    vars:
+      text: file://../tests/outputs/01_raw_outline_results.json
+      schema: file://../tests/schemas/podcast_outline.json
+    options:
+      transformVars: file://../scripts/get-output.py:get_transform
+    storeOutputAs: outline_json_output
+    assert:
+      - type: is-json
+        value: file://../tests/schemas/podcast_outline.json

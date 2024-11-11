@@ -1,0 +1,28 @@
+description: "01 Raw Outline Generation"
+evaluateOptions:
+  maxConcurrency: 1
+  showProgressBar: true
+
+prompts:
+  - "file://../prompts.py:PodcastPrompts.raw_outline_prompt"
+
+providers:
+  - id: "file://../providers/nim-405b.py"
+    label: "405b"
+
+tests:
+  - description: "Raw Outline Generation"
+    vars:
+      text: file://../data/eval.txt
+      duration: 15
+    storeOutputAs: raw_outline_output
+    assert:
+      - type: llm-rubric
+        value: |
+          Evaluate if the outline:
+          1. Has clear sections for background, innovation, impact, and future work
+          2. Makes innovation the focus
+          3. Allocates time appropriately for {{duration}} minutes
+          4. Maintains technical accuracy while being accessible
+          Pass if all scores >= 0.95
+        provider: "file://../scripts/nim-provider.py"

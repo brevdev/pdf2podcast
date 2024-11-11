@@ -1,5 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import ServiceType, JobStatus, Conversation
+from shared.shared_types import ServiceType, JobStatus, Conversation, PodcastOutline
 from shared.storage import StorageManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
@@ -31,17 +31,6 @@ logger = logging.getLogger(__name__)
 
 
 # Data Models
-
-
-class PodcastSegment(BaseModel):
-    section: str
-    descriptions: List[str]
-    duration: int
-
-
-class PodcastOutline(BaseModel):
-    title: str
-    segments: List[PodcastSegment]
 
 
 class TranscriptionRequest(BaseModel):
