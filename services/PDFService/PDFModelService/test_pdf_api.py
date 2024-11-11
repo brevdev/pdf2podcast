@@ -62,7 +62,7 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
                         return True
                     print(f"No result found in response data: {status_data}")
                     return False
-                elif status_response.status_code == 425:
+                elif status_response.status_code == 202:
                     # Task still processing
                     print("Task still processing, waiting 2 seconds...")
                     time.sleep(2)

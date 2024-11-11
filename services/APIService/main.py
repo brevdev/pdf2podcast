@@ -329,7 +329,7 @@ async def get_output(job_id: str):
 
             # If TTS reports complete but result not ready, it's still being fetched
             raise HTTPException(
-                status_code=425,  # Too Early
+                status_code=202,  # Too Early
                 detail="Result is being prepared",
             )
 

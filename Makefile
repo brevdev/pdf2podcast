@@ -3,7 +3,7 @@ include .env
 export
 
 # Version for production deployment
-VERSION := 1.9
+VERSION := 1.13
 
 # Docker registry and project
 REGISTRY := nvcr.io/pfteb4cqjzrs/playground
@@ -59,6 +59,12 @@ prod: check_env
 	docker compose down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up
+
+# Production target for pdf model service
+model-prod:
+	docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml down
+	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
+	VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up
 
 # Version bump and release target
 version-bump:

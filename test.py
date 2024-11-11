@@ -198,7 +198,7 @@ def test_api(base_url: str):
     if not os.path.exists(samples_dir):
         raise FileNotFoundError(f"Samples directory not found at {samples_dir}")
 
-    sample_pdf_path = os.path.join(samples_dir, "PNP_Proof.pdf")
+    sample_pdf_path = os.path.join(samples_dir, "Rosie Device-Level TAVA.pdf")
 
     # Ensure the sample PDF file exists
     assert os.path.exists(
@@ -220,7 +220,7 @@ def test_api(base_url: str):
     print(f"Using voices: {voice_mapping}")
 
     with open(sample_pdf_path, "rb") as pdf_file:
-        files = {"file": ("sample.pdf", pdf_file, "application/pdf")}
+        files = {"file": ("Rosie Device-Level TAVA.pdf", pdf_file, "application/pdf")}
         response = requests.post(
             process_url,
             files=files,
