@@ -1,13 +1,11 @@
 import jinja2
 
 # Raw string prompts
-RAW_OUTLINE_PROMPT_STR = """I want to make the following paper into a podcast transcript for {{ duration }} minutes, to help audience understand background, innovation, impact and future work. 
+RAW_OUTLINE_PROMPT_STR = """I want to make the following paper into a concise 30-second audio script that captures the single most important innovation or finding. Focus on one key takeaway that will grab the audience's attention.
 
-Come up the structure of the podcast.
-                                 
 {{ text }}
-                                     
-Innovation should be the focus of the podcast, and the most important part of the podcast, with enough details."""
+
+The output must be extremely focused - remember this is only 30 seconds. Avoid any unnecessary background or future work unless absolutely critical to understanding the main point."""
 
 OUTLINE_PROMPT_STR = """Given the free form outline, convert in into a structured outline without losing any information.                                 
 
@@ -15,37 +13,38 @@ OUTLINE_PROMPT_STR = """Given the free form outline, convert in into a structure
                                                            
 The result must conform to the following JSON schema:\n{{ schema }}\n\n"""
 
-SEGMENT_TRANSCRIPT_PROMPT_STR = """Make a transcript given the text:
+SEGMENT_TRANSCRIPT_PROMPT_STR = """Create a 30-second script (approximately 90 words) for the following text:
 
 {{ text }}
-                                            
-The transcript is about {{ duration }} minutes, approximately {{ (duration * 180) | int }} words.
-The transcript's subject is {{ topic }}, and should focus on the following topics: {{ angles }}
-                                            
-Explain all concepts clearly, assuming no prior knowledge
-Use analogies, stories, or examples to illustrate points
-Address potential questions or counterarguments
-Provide context and background information throughout
-Make sure the details, numbers are accurate and comprehensive
-                                            
-Dive deep into each topic, and provide enough details given the time budget, don't leave any stone unturned."""
 
-DEEP_DIVE_PROMPT_STR = """You will be given some content, short ideas or thoughts about the content.
+The script should focus on: {{ topic }}
+Key angles to cover: {{ angles }}
 
-Your task is to expand the content into a detailed and comprehensive explanation, with enough details and examples.
+Guidelines for 30-second format:
+- Start with an attention-grabbing statement
+- Focus on ONE main idea or finding
+- Use simple, clear language
+- Include only the most essential details
+- End with a memorable takeaway
+- Avoid technical jargon unless absolutely necessary
 
-Here is the content
+Remember: This must fit in 30 seconds - be ruthlessly concise while maintaining clarity."""
 
+DEEP_DIVE_PROMPT_STR = """You will be given content to compress into a 30-second explanation (approximately 90 words).
+
+Content:
 {{text}}
-                                   
-The topic will be around
-                                   
+
+Topic focus:
 {{topic}}
-                                   
-Dive deep into each topic, come up with an outline with topics and subtopics to help fully understand the content.
-Expand the topics, don't add any other topics. Allocate time budget for each topic. Total time budget should be {{ duration }} minutes.
-Focus on the most important topics and ideas, and allocate more time budget to them.
-Avoid introduction and conclusion in the outline, focus on expanding into subtopics."""
+
+Create a laser-focused outline that:
+- Identifies the single most important point
+- Breaks it down into 2-3 key supporting details
+- Removes all non-essential information
+- Ensures everything mentioned can be properly explained in 30 seconds
+
+Total time: {{ duration }} seconds (approximately 90 words)."""
 
 TRANSCRIPT_PROMPT_STR = """Given the transcript of different segments,combine and optimize the transcript to make the flow more natural.
 The content should be strictly following the transcript, and only optimize the flow. Keep all the details, and storytelling contents.
@@ -59,42 +58,25 @@ Time budget: {{ duration }} minutes, approximately {{ (duration * 180) | int }} 
                                     
 Only return the full transcript, no need to include any other information like time budget or segment name."""
 
-RAW_PODCAST_DIALOGUE_PROMPT_V2_STR = """Your task is to transform the provided input transcript into a lively, engaging, and informative podcast dialogue. 
+RAW_PODCAST_DIALOGUE_PROMPT_V2_STR = """Transform the provided input into a punchy 30-second dialogue between two speakers.
 
-There are two speakers, speaker-1 and speaker-2.
-speaker-1's name is {{ speaker_1_name }}, and speaker-2's name is {{ speaker_2_name }}.
+Speakers: {{ speaker_1_name }} and {{ speaker_2_name }}
 
-Given the following conversation, make introductions for both speakers at beginning of the conversation.
-During the conversation, occasionally mention the speaker's name to refer to them, to make the conversation more natural.
-Incorporate natural speech patterns, including occasional verbal fillers (e.g., "um," "well," "you know")
-Use casual language and ensure the dialogue flows smoothly, reflecting a real-life conversation
-The fillers should be used naturally, not in every sentence, and not in a robotic way but related to topic and conversation context.
-                                          
-Maintain a lively pace with a mix of serious discussion and lighter moments
-Use rhetorical questions or hypotheticals to involve the listener
-Create natural moments of reflection or emphasis
-     
-Allow for natural interruptions and back-and-forth between host and guest
-Ensure the guest's responses are substantiated by the input text, avoiding unsupported claims                                   
-Avoid long sentences from either speaker, break them into conversations between two speakers.
-Throughout the script, strive for authenticity in the conversation. Include:
-   - Moments of genuine curiosity or surprise from the host
-   - Instances where the guest might briefly struggle to articulate a complex idea
-   - Light-hearted moments or humor when appropriate
-   - Brief personal anecdotes or examples that relate to the topic (within the bounds of the input text)
-                 
-Don't lose any information or details in the transcript. It is only format conversion, so strictly follow the transcript.
-                                                 
-This segment is about {{ duration }} minutes, approximately {{ (duration * 180) | int }} words.
-The topic is {{ descriptions }}
-                                          
-You should keep all analogies, stories, examples, and quotes from the transcript.
+Guidelines for 30-second format:
+- Start with a hook - no lengthy introductions
+- Focus on ONE key point or revelation
+- Use short, snappy exchanges
+- Include max 1-2 brief examples or analogies
+- End with a clear takeaway
+- Keep individual speaking turns to 1-2 sentences maximum
 
-Here is the transcript:
+Topic: {{ descriptions }}
+Target length: {{ duration }} seconds (approximately 90 words)
+
+Input text:
 {{text}}
-                                          
-Only return the full dialogue transcript, no need to include any other information like time budget or segment name.
-Don't add introduction and ending to the dialogue unless it is provided in the transcript."""
+
+Remember: Every word must earn its place in a 30-second script."""
 
 FUSE_OUTLINE_PROMPT_STR = """You are given two outlines, one is overall outline, another is sub-outline for one section in the overall outline.
 You need to fuse the two outlines into a new outline, to represent the whole podcast without losing any descriptions in sub sections.

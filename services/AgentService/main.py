@@ -17,12 +17,6 @@ import logging
 import time
 from prompts import (
     RAW_OUTLINE_PROMPT,
-    OUTLINE_PROMPT,
-    SEGMENT_TRANSCRIPT_PROMPT,
-    DEEP_DIVE_PROMPT,
-    RAW_PODCAST_DIALOGUE_PROMPT_v2,
-    FUSE_OUTLINE_PROMPT,
-    REVISE_PROMPT,
     PODCAST_DIALOGUE_PROMPT,
 )
 
@@ -46,9 +40,8 @@ class PodcastOutline(BaseModel):
 
 class TranscriptionRequest(BaseModel):
     markdown: str
-    duration: int = 20
-    speaker_1_name: str = "Bob"
-    speaker_2_name: str = "Kate"
+    duration: int = 30
+    speaker_name: str = "Host"
     model: str = "meta/llama-3.1-405b-instruct"
     job_id: str
 
@@ -244,175 +237,24 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             job_manager.update_status(
                 job_id, JobStatus.PROCESSING, "Initializing processing"
             )
-            schema = PodcastOutline.model_json_schema()
 
             # Generate initial outline
             job_manager.update_status(
-                job_id, JobStatus.PROCESSING, "Generating initial outline"
+                job_id, JobStatus.PROCESSING, "Extracting key points"
             )
             prompt = RAW_OUTLINE_PROMPT.render(
                 text=request.markdown, duration=request.duration
             )
-            raw_outline = llm_manager.query(
+            script = llm_manager.query(
                 "reasoning",
                 [{"role": "user", "content": prompt}],
-                "raw_outline",
+                "script",
             )
             prompt_tracker.track(
-                "raw_outline",
+                "script",
                 prompt,
                 llm_manager.model_configs["reasoning"].name,
-                raw_outline,
-            )
-
-            # Convert to structured format
-            job_manager.update_status(
-                job_id,
-                JobStatus.PROCESSING,
-                "Converting raw outline to structured format",
-            )
-            prompt = OUTLINE_PROMPT.render(
-                text=raw_outline, schema=json.dumps(schema, indent=2)
-            )
-            outline = llm_manager.query(
-                "json",
-                [{"role": "user", "content": prompt}],
-                "outline",
-                json_schema=schema,
-            )
-            prompt_tracker.track(
-                "outline", prompt, llm_manager.model_configs["json"].name, outline
-            )
-            outline_json = json.loads(outline)
-
-            # Process segments
-            longest_segment_idx = max(
-                range(len(outline_json["segments"])),
-                key=lambda i: outline_json["segments"][i]["duration"],
-            )
-
-            segments: Dict[str, Value] = {}
-            sub_outline = {}
-            for idx, segment in enumerate(outline_json["segments"]):
-                job_manager.update_status(
-                    job_id,
-                    JobStatus.PROCESSING,
-                    f"Processing segment {idx + 1}/{len(outline_json['segments'])}: {segment['section']}",
-                )
-
-                if idx == longest_segment_idx:
-                    deep_dive_res = deep_dive_segment(
-                        job_id,
-                        request.markdown,
-                        segment,
-                        llm_manager,
-                        schema,
-                        prompt_tracker,
-                    )
-                    deep_dive_segments = deep_dive_res[0].copy()
-                    segments.update(deep_dive_segments)
-                    sub_outline = deep_dive_res[1]
-                else:
-                    prompt = SEGMENT_TRANSCRIPT_PROMPT.render(
-                        text=request.markdown,
-                        duration=segment["duration"],
-                        topic=segment["section"],
-                        angles="\n".join(segment["descriptions"]),
-                    )
-                    seg_response = llm_manager.query(
-                        "reasoning",
-                        [{"role": "user", "content": prompt}],
-                        f"segment_{idx}",
-                        sync=False,
-                    )
-                    segments[f"segment_transcript_{idx}"] = seg_response
-                    prompt_tracker.track(
-                        f"segment_transcript_{idx}",
-                        prompt,
-                        llm_manager.model_configs["reasoning"].name,
-                    )
-
-            # Generate dialogue
-            segment_transcripts: list[Value] = []
-            for idx, segment in enumerate(outline_json["segments"]):
-                segment_name = f"segment_transcript_{idx}"
-                seg_response = segments.get(segment_name, None)
-                if not seg_response:
-                    logger.warning(
-                        f"Segment {segment_name} not found in segment transcripts"
-                    )
-                    continue
-                prompt_tracker.update_result(segment_name, seg_response.get())
-                job_manager.update_status(
-                    job_id,
-                    JobStatus.PROCESSING,
-                    f"Converting segment {idx + 1}/{len(outline_json['segments'])} to dialogue",
-                )
-                prompt = RAW_PODCAST_DIALOGUE_PROMPT_v2.render(
-                    text=seg_response.get(),
-                    duration=segment["duration"],
-                    descriptions=segment["descriptions"],
-                    speaker_1_name=request.speaker_1_name,
-                    speaker_2_name=request.speaker_2_name,
-                )
-                seg_transcript_response = llm_manager.query(
-                    "reasoning",
-                    [{"role": "user", "content": prompt}],
-                    f"segment_dialogue_{idx}",
-                    sync=False,
-                )
-                segment_transcripts.append(seg_transcript_response)
-
-            # Combine transcripts
-            job_manager.update_status(
-                job_id, JobStatus.PROCESSING, "Combining segments"
-            )
-            full_transcript = "\n".join(
-                [segment_val.get() for (_, segment_val) in segments.items()]
-            )
-            conversation = "\n".join([segment.get() for segment in segment_transcripts])
-
-            # Track each segment transcript
-            for idx, segment_transcript_val in enumerate(segment_transcripts):
-                prompt_tracker.track(
-                    f"raw_podcast_dialogue_v2_segment_{idx}",
-                    prompt,
-                    llm_manager.model_configs["reasoning"].name,
-                    segment_transcript_val.get(),
-                )
-
-            # Fuse outline
-            job_manager.update_status(job_id, JobStatus.PROCESSING, "Fusing outline")
-            prompt = FUSE_OUTLINE_PROMPT.render(
-                overall_outline=outline, sub_outline=sub_outline
-            )
-            full_outline = llm_manager.query(
-                "reasoning", [{"role": "user", "content": prompt}], "fuse_outline"
-            )
-            prompt_tracker.track(
-                "fuse_outline",
-                prompt,
-                llm_manager.model_configs["reasoning"].name,
-                full_outline,
-            )
-
-            # Revise dialogue
-            job_manager.update_status(job_id, JobStatus.PROCESSING, "Revising dialogue")
-            prompt = REVISE_PROMPT.render(
-                raw_transcript=full_transcript,
-                dialogue_transcript=conversation,
-                outline=full_outline,
-            )
-            conversation = llm_manager.query(
-                "reasoning",
-                [{"role": "user", "content": prompt}],
-                "revise_dialogue",
-            )
-            prompt_tracker.track(
-                "revise_dialogue",
-                prompt,
-                llm_manager.model_configs["reasoning"].name,
-                conversation,
+                script,
             )
 
             # Convert to final JSON format
@@ -421,27 +263,26 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
                 job_id, JobStatus.PROCESSING, "Converting to final format"
             )
             prompt = PODCAST_DIALOGUE_PROMPT.render(
-                text=conversation,
+                text=script,
                 schema=json.dumps(schema, indent=2),
-                speaker_1_name=request.speaker_1_name,
-                speaker_2_name=request.speaker_2_name,
+                speaker_1_name=request.speaker_name,
+                speaker_2_name=request.speaker_name,
             )
-            final_conversation = llm_manager.query(
+            final_script = llm_manager.query(
                 "json",
                 [{"role": "user", "content": prompt}],
-                "final_conversation",
+                "final_script",
                 json_schema=schema,
             )
             prompt_tracker.track(
-                "final_conversation",
+                "final_script",
                 prompt,
                 llm_manager.model_configs["json"].name,
-                final_conversation,
+                final_script,
             )
 
             # Store result
-            result = json.loads(final_conversation)
-            # Expire the result after 2 minutes
+            result = json.loads(final_script)
             job_manager.set_result_with_expiration(
                 job_id, json.dumps(result).encode(), ex=120
             )
@@ -449,7 +290,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             prompt_tracker.save(storage_manager)
 
             job_manager.update_status(
-                job_id, JobStatus.COMPLETED, "Transcription completed successfully"
+                job_id, JobStatus.COMPLETED, "Script completed successfully"
             )
 
         except Exception as e:
@@ -458,78 +299,6 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             logger.error(f"Error processing job {job_id}: {str(e)}")
             job_manager.update_status(job_id, JobStatus.FAILED, str(e))
             raise
-
-
-def deep_dive_segment(
-    job_id: str,
-    text: str,
-    segment: Dict[str, str],
-    llm_manager: LLMManager,
-    schema: Dict,
-    prompt_tracker: PromptTracker,
-) -> tuple[Dict[str, Value], Dict]:
-    status_msg = f"Performing deep dive analysis of segment: {segment['section']}"
-    job_manager.update_status(job_id, JobStatus.PROCESSING, status_msg)
-    logger.info(f"Job {job_id}: {status_msg}")
-
-    prompt = DEEP_DIVE_PROMPT.render(
-        text=text, topic=segment["descriptions"], duration=segment["duration"]
-    )
-    outline = llm_manager.query(
-        "reasoning", [{"role": "user", "content": prompt}], "deep_dive_outline"
-    )
-    prompt_tracker.track(
-        "deep_dive_outline",
-        prompt,
-        llm_manager.model_configs["reasoning"].name,
-        outline,
-    )
-
-    prompt = OUTLINE_PROMPT.render(text=outline, schema=json.dumps(schema, indent=2))
-    outline_response = llm_manager.query(
-        "json",
-        [{"role": "user", "content": prompt}],
-        "deep_dive_outline_json",
-        json_schema=schema,
-    )
-    prompt_tracker.track(
-        "deep_dive_outline_json",
-        prompt,
-        llm_manager.model_configs["json"].name,
-        outline_response,
-    )
-    outline_json = json.loads(outline_response)
-
-    subsegments: Dict[str, Value] = {}
-    for idx, subsegment in enumerate(outline_json["segments"]):
-        job_manager.update_status(
-            job_id,
-            JobStatus.PROCESSING,
-            f"Processing subsegment: {subsegment['section']}",
-        )
-        prompt = SEGMENT_TRANSCRIPT_PROMPT.render(
-            text=text,
-            duration=subsegment["duration"],
-            topic=subsegment["section"],
-            angles="\n".join(subsegment["descriptions"]),
-        )
-        seg_response = llm_manager.query(
-            "subsegments",
-            [{"role": "user", "content": prompt}],
-            f"sub_segment_{idx}",
-            sync=False,
-        )
-        subsegment_section_name = (
-            f"deep_dive_segment_transcript_{subsegment['section'].replace(' ', '_')}"
-        )
-        subsegments[subsegment_section_name] = seg_response
-        prompt_tracker.track(
-            subsegment_section_name,
-            prompt,
-            llm_manager.model_configs["subsegments"].name,
-        )
-
-    return (subsegments, outline_json)
 
 
 # API Endpoints
