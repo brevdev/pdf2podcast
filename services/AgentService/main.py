@@ -85,7 +85,7 @@ class LLMManager:
             "api_base": "https://integrate.api.nvidia.com/v1",
             "backend_type": "nim",
         },
-        "medium": {
+        "iteration": {
             "name": "meta/llama-3.1-405b-instruct",
             "api_base": "https://integrate.api.nvidia.com/v1",
             "backend_type": "nim",
@@ -204,18 +204,18 @@ class PromptTracker:
             "timestamp": time.time(),
         }
         if response:
-            self.save()
+            self._save()
         logger.info(f"Tracked step {step_name} for {self.job_id}")
 
     def update_result(self, step_name: str, response: str):
         if step_name in self.steps:
             self.steps[step_name]["response"] = response
-            self.save()
+            self._save()
             logger.info(f"Updated response for step {step_name}")
         else:
             logger.warning(f"Step {step_name} not found in prompt tracker")
 
-    def save(self):
+    def _save(self):
         self.storage_manager.store_file(
             self.job_id,
             json.dumps({"steps": list(self.steps.values())}).encode(),
@@ -386,7 +386,7 @@ def process_segments(
         prompt = template.render(**prompt_params)
 
         seg_response = llm_manager.query(
-            "medium",
+            "iteration",
             [{"role": "user", "content": prompt}],
             f"segment_{idx}",
             sync=False,
@@ -395,7 +395,7 @@ def process_segments(
         prompt_tracker.track(
             f"segment_transcript_{idx}",
             prompt,
-            llm_manager.model_configs["medium"].name,
+            llm_manager.model_configs["iteration"].name,
         )
 
         segments[f"segment_transcript_{idx}"] = seg_response
@@ -512,7 +512,7 @@ def revise_dialogue(
         )
 
         revised = llm_manager.query(
-            "medium",
+            "iteration",
             [{"role": "user", "content": prompt}],
             f"revise_dialogue_{idx}",
         )
@@ -520,7 +520,7 @@ def revise_dialogue(
         prompt_tracker.track(
             f"revise_dialogue_{idx}",
             prompt,
-            llm_manager.model_configs["medium"].name,
+            llm_manager.model_configs["iteration"].name,
             revised,
         )
 
@@ -625,7 +625,6 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             job_manager.set_result_with_expiration(
                 job_id, json.dumps(result).encode(), ex=120
             )
-            prompt_tracker.save(storage_manager)
             job_manager.update_status(
                 job_id, JobStatus.COMPLETED, "Transcription completed successfully"
             )
