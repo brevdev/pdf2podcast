@@ -11,8 +11,9 @@ import logging
 import time
 import asyncio
 import json
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pydantic import BaseModel
+from collections.abc import Coroutine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -172,7 +173,7 @@ async def process_multiple_pdfs(
             )
 
             # Process all PDFs in parallel
-            tasks = []
+            tasks: List[Tuple[str, str, Coroutine]] = []
             for idx, (content, filename) in enumerate(zip(contents, filenames)):
                 with tempfile.NamedTemporaryFile(
                     delete=False, suffix=".pdf"
