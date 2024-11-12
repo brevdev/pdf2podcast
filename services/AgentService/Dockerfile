@@ -18,7 +18,8 @@ RUN pip install fastapi uvicorn pydantic python-dotenv jinja2 redis minio opente
     opentelemetry-instrumentation-redis \
     opentelemetry-exporter-otlp-proto-grpc \
     opentelemetry-instrumentation-httpx \
-    opentelemetry-instrumentation-urllib3
+    opentelemetry-instrumentation-urllib3 \
+    langchain-nvidia-ai-endpoints
 
 # Install flexagent
 COPY services/AgentService/flexagent /app/flexagent

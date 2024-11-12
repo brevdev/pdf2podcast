@@ -458,6 +458,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
         try:
             llm_manager = LLMManager(
                 api_key=os.getenv("NIM_KEY"),
+                telemetry=telemetry,
                 config_path=os.getenv("MODEL_CONFIG_PATH"),
             )
             span.set_attribute("model_config_path", os.getenv("MODEL_CONFIG_PATH"))
