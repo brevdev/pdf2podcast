@@ -226,6 +226,20 @@ class PromptTracker:
             f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
         )
 
+class PodcastState(TypedDict):
+    summarized_pdfs: List[PDFMetadata]
+    raw_outline: str
+    structured_outline: Dict[str, Any]
+    outline: PodcastOutline
+    segments: Dict[str, Value]
+    segment_dialogues: List[Dict[str, Value]]
+    combined_dialogue: str
+    final_conversation: Dict[str, Any]
+
+class PodcastGraph:
+    def __init__(self, llm_manager: LLMManager, storage_manager: StorageManager):
+        
+
 
 def summarize_pdf(
     pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker
