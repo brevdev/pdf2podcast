@@ -4,23 +4,21 @@ import logging
 import json
 from shared.otel import OpenTelemetryInstrumentation
 from opentelemetry.trace.status import StatusCode
-import logging
-from typing import Optional
 from pathlib import Path
 from dataclasses import dataclass
 
-
-
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ModelConfig:
     """
     Wrapper over Langchain's model configuration
 
-    from langchain_nvidia_ai_endpoints import ChatNVIDIA
-    model = ChatNVIDIA(model="meta/llama2-70b", base_url="https://integrate.api.nvidia.com/v1")
+    Langchain's ChatNVIDIA class:
+    >>> from langchain_nvidia_ai_endpoints import ChatNVIDIA
+    >>> model = ChatNVIDIA(model="meta/llama2-70b", base_url="https://integrate.api.nvidia.com/v1")
     """
 
     name: str
@@ -32,6 +30,7 @@ class ModelConfig:
             name=data["name"],
             api_base=data["api_base"],
         )
+
 
 class LLMManager:
     DEFAULT_CONFIGS = {

@@ -96,6 +96,7 @@ class TranscriptionRequest(TranscriptionParams):
     pdf_metadata: List[PDFMetadata]
     job_id: str
 
+
 class SegmentPoint(BaseModel):
     description: str
 

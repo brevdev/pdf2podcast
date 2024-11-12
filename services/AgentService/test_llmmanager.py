@@ -1,11 +1,9 @@
 import asyncio
 import os
-from typing import Dict, Any
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
-from dataclasses import dataclass
 import logging
 from fastapi import FastAPI
-from shared.llmmanager import LLMManager, ModelConfig
+from shared.llmmanager import LLMManager
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -19,6 +17,7 @@ mock_config = OpenTelemetryConfig(
     enable_requests=False,
 )
 mock_telemetry.initialize(mock_config, mock_app)
+
 
 async def test_basic_queries():
     """Test both sync and async basic queries"""

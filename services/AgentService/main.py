@@ -12,7 +12,6 @@ from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from flexagent.engine import Value
-from pydantic import BaseModel
 from opentelemetry.trace.status import StatusCode
 from typing import List, Dict
 import json
@@ -38,6 +37,7 @@ telemetry.initialize(config, app)
 
 job_manager = JobStatusManager(ServiceType.AGENT, telemetry=telemetry)
 storage_manager = StorageManager(telemetry=telemetry)
+
 
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
