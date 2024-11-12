@@ -1,11 +1,12 @@
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Union
 import logging
 import json
 from shared.otel import OpenTelemetryInstrumentation
 from opentelemetry.trace.status import StatusCode
 from pathlib import Path
 from dataclasses import dataclass
+from langchain_core.messages import AIMessage    
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -13,14 +14,6 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class ModelConfig:
-    """
-    Wrapper over Langchain's model configuration
-
-    Langchain's ChatNVIDIA class:
-    >>> from langchain_nvidia_ai_endpoints import ChatNVIDIA
-    >>> model = ChatNVIDIA(model="meta/llama2-70b", base_url="https://integrate.api.nvidia.com/v1")
-    """
-
     name: str
     api_base: str
 
@@ -33,6 +26,19 @@ class ModelConfig:
 
 
 class LLMManager:
+    """
+    A clean and user friendly wrapper over Langchain's ChatNVIDIA class. We use this class
+    to abstract away all Langchain functionalities including models, async/sync queries,
+    structured outputs, types, and more. It also comes with OTEL telemetry out of the box
+    for all queries.
+
+    Configs can be overridden by providing a custom config file. Currently the defaults are 
+    hardcoded to build.nvidia.com endpoints.
+
+    Usage:
+    >>> llm_manager = LLMManager(api_key, telemetry)
+    >>> llm_manager.query_sync("reasoning", [{"role": "user", "content": "Hello, world!"}], "test")
+    """
     DEFAULT_CONFIGS = {
         "reasoning": {
             "name": "meta/llama-3.1-405b-instruct",
@@ -95,50 +101,69 @@ class LLMManager:
             raise ValueError(f"Unknown model key: {model_key}")
         if model_key not in self._llm_cache:
             config = self.model_configs[model_key]
-            # Store base model without transformations
             self._llm_cache[model_key] = ChatNVIDIA(
                 model=config.name, base_url=config.api_base, nvidia_api_key=self.api_key
             )
         return self._llm_cache[model_key]
 
-    def query(
+    def query_sync(
         self,
         model_key: str,
         messages: List[Dict[str, str]],
         query_name: str,
         json_schema: Optional[Dict] = None,
-        sync: bool = True,
         retries: int = 5,
-    ) -> Any:
-        """Send a query to the specified model with retry logic"""
+    ) -> Union[AIMessage, Dict[str, Any]]:
+        """Send a synchronous query to the specified model"""
         with self.telemetry.tracer.start_as_current_span(
             f"agent.query.{query_name}"
         ) as span:
             span.set_attribute("model_key", model_key)
-            span.set_attribute("sync", sync)
             span.set_attribute("retries", retries)
+            span.set_attribute("async", False)
 
             try:
                 llm = self.get_llm(model_key)
-
                 if json_schema:
                     llm = llm.with_structured_output(json_schema)
-
                 llm = llm.with_retry(
                     stop_after_attempt=retries, wait_exponential_jitter=True
                 )
-
-                if sync:
-                    response = llm.invoke(messages)
-                else:
-                    response = llm.ainvoke(messages)
-
-                return response
-
+                resp = llm.invoke(messages)
+                return resp
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
                 logger.error(f"Query failed: {e}")
-                raise Exception(
-                    f"Failed to get response after {retries} attempts"
-                ) from e
+                raise Exception(f"Failed to get response after {retries} attempts") from e
+
+    async def query_async(
+        self,
+        model_key: str,
+        messages: List[Dict[str, str]],
+        query_name: str,
+        json_schema: Optional[Dict] = None,
+        retries: int = 5,
+    ) -> Union[AIMessage, Dict[str, Any]]:
+        """Send an asynchronous query to the specified model"""
+        with self.telemetry.tracer.start_as_current_span(
+            f"agent.query.{query_name}"
+        ) as span:
+            span.set_attribute("model_key", model_key)
+            span.set_attribute("retries", retries)
+            span.set_attribute("async", True)
+
+            try:
+                llm = self.get_llm(model_key)
+                if json_schema:
+                    llm = llm.with_structured_output(json_schema)
+                llm = llm.with_retry(
+                    stop_after_attempt=retries, wait_exponential_jitter=True
+                )
+                resp = await llm.ainvoke(messages)
+                return resp
+            except Exception as e:
+                span.set_status(StatusCode.ERROR)
+                span.record_exception(e)
+                logger.error(f"Query failed: {e}")
+                raise Exception(f"Failed to get response after {retries} attempts") from e

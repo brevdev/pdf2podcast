@@ -13,12 +13,15 @@ from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from flexagent.engine import Value
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict
+from typing import List, Dict, Union, Any
 import json
 import os
 import logging
 import time
 from prompts import PodcastPrompts
+from langchain_core.messages import BaseMessage, AIMessage
+import asyncio
+
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -39,6 +42,7 @@ job_manager = JobStatusManager(ServiceType.AGENT, telemetry=telemetry)
 storage_manager = StorageManager(telemetry=telemetry)
 
 
+# TODO: Move this to shared
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
 
@@ -78,49 +82,17 @@ class PromptTracker:
             f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
         )
 
-
-# class PodcastState(TypedDict):
-#     summarized_pdfs: List[PDFMetadata]
-#     raw_outline: str
-#     structured_outline: Dict[str, Any]
-#     outline: PodcastOutline
-#     segments: Dict[str, Value]
-#     segment_dialogues: List[Dict[str, Value]]
-#     combined_dialogue: str
-#     final_conversation: Dict[str, Any]
-
-# class PodcastGraph:
-#     def __init__(self, state: PodcastState, llm_manager: LLMManager, storage_manager: StorageManager, request: TranscriptionRequest):
-#         self.state = state
-#         self.llm_manager = llm_manager
-#         self.storage_manager = storage_manager
-#         self.request = request
-#         self.schema = PodcastOutline.model_json_schema()
-#         self._build_graph()
-
-#     def _build_graph(self):
-#         podcast_graph = StateGraph()
-
-#         podcast_graph.add_node("summarize_pdfs", self._summarize_pdfs)
-
-#     async def _summarize_pdfs(self):
-#         """This is a parallel call function"""
-#         summarized_pdfs: List[PDFMetadata] = []
-
-#         return {"summarized_pdfs": summarized_pdfs}
-
-
-def summarize_pdf(
+async def summarize_pdf(
     pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker
-) -> Value:
+) -> AIMessage:
     """Summarize a single PDF document"""
     template = PodcastPrompts.get_template("summary_prompt")
     prompt = template.render(text=pdf_metadata.markdown)
-    summary_response = llm_manager.query(
+
+    summary_response: AIMessage = await llm_manager.query_async(
         "reasoning",
         [{"role": "user", "content": prompt}],
         f"summarize_{pdf_metadata.filename}",
-        sync=False,
     )
     prompt_tracker.track(
         f"summarize_{pdf_metadata.filename}",
@@ -130,7 +102,7 @@ def summarize_pdf(
     return summary_response
 
 
-def summarize_pdfs(
+async def summarize_pdfs(
     pdfs: List[PDFMetadata],
     job_id: str,
     llm_manager: LLMManager,
@@ -140,15 +112,17 @@ def summarize_pdfs(
     job_manager.update_status(
         job_id, JobStatus.PROCESSING, f"Summarizing {len(pdfs)} PDFs"
     )
-    summarized_pdfs: Dict[str, Value] = {
-        pdf.filename: summarize_pdf(pdf, llm_manager, prompt_tracker) for pdf in pdfs
-    }
-    for pdf in pdfs:
-        pdf.summary = summarized_pdfs[pdf.filename].get()
+    
+    summaries: List[AIMessage] = await asyncio.gather(
+        *[summarize_pdf(pdf, llm_manager, prompt_tracker) for pdf in pdfs]
+    )
+
+    for pdf, summary in zip(pdfs, summaries):
+        pdf.summary = summary.content
         prompt_tracker.update_result(f"summarize_{pdf.filename}", pdf.summary)
         logger.info(f"Successfully summarized {pdf.filename}")
-    return pdfs
 
+    return pdfs
 
 def generate_raw_outline(
     summarized_pdfs: List[PDFMetadata],
@@ -180,7 +154,7 @@ def generate_raw_outline(
         focus_instructions=request.guide if request.guide else None,
         documents="\n\n".join(documents),
     )
-    raw_outline = llm_manager.query(
+    raw_outline: AIMessage = llm_manager.query_sync(
         "reasoning",
         [{"role": "user", "content": prompt}],
         "raw_outline",
@@ -190,10 +164,10 @@ def generate_raw_outline(
         "raw_outline",
         prompt,
         llm_manager.model_configs["reasoning"].name,
-        raw_outline,
+        raw_outline.content,
     )
 
-    return raw_outline
+    return raw_outline.content
 
 
 def generate_structured_outline(
@@ -452,7 +426,7 @@ def create_final_conversation(
     return json.loads(conversation_json)
 
 
-def process_transcription(job_id: str, request: TranscriptionRequest):
+async def process_transcription(job_id: str, request: TranscriptionRequest):
     """Main processing function for transcription requests"""
     with telemetry.tracer.start_as_current_span("agent.process_transcription") as span:
         try:
@@ -470,7 +444,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             )
 
             # Summarize PDFs
-            summarized_pdfs = summarize_pdfs(
+            summarized_pdfs = await summarize_pdfs(
                 request.pdf_metadata, job_id, llm_manager, prompt_tracker
             )
 
@@ -483,39 +457,41 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
                 job_id,
             )
 
-            # Convert to structured format
-            outline_json = generate_structured_outline(
-                raw_outline, llm_manager, prompt_tracker, job_id
-            )
-            outline = PodcastOutline.model_validate(outline_json)
+            print(raw_outline)
 
-            # Process segments
-            segments = process_segments(
-                outline, request, llm_manager, prompt_tracker, job_id
-            )
+            # # Convert to structured format
+            # outline_json = generate_structured_outline(
+            #     raw_outline, llm_manager, prompt_tracker, job_id
+            # )
+            # outline = PodcastOutline.model_validate(outline_json)
 
-            # Generate dialogue
-            segment_dialogues = generate_dialogue(
-                segments, outline, request, llm_manager, prompt_tracker, job_id
-            )
+            # # Process segments
+            # segments = process_segments(
+            #     outline, request, llm_manager, prompt_tracker, job_id
+            # )
 
-            # Combine transcripts
-            conversation = revise_dialogue(
-                segment_dialogues, outline_json, llm_manager, prompt_tracker, job_id
-            )
+            # # Generate dialogue
+            # segment_dialogues = generate_dialogue(
+            #     segments, outline, request, llm_manager, prompt_tracker, job_id
+            # )
 
-            # Create final conversation
-            result = create_final_conversation(
-                conversation, request, llm_manager, prompt_tracker, job_id
-            )
+            # # Combine transcripts
+            # conversation = revise_dialogue(
+            #     segment_dialogues, outline_json, llm_manager, prompt_tracker, job_id
+            # )
 
-            # Store result
-            job_manager.set_result_with_expiration(
-                job_id, json.dumps(result).encode(), ex=120
-            )
-            job_manager.update_status(
-                job_id, JobStatus.COMPLETED, "Transcription completed successfully"
-            )
+            # # Create final conversation
+            # result = create_final_conversation(
+            #     conversation, request, llm_manager, prompt_tracker, job_id
+            # )
+
+            # # Store result
+            # job_manager.set_result_with_expiration(
+            #     job_id, json.dumps(result).encode(), ex=120
+            # )
+            # job_manager.update_status(
+            #     job_id, JobStatus.COMPLETED, "Transcription completed successfully"
+            # )
 
         except Exception as e:
             span.set_status(StatusCode.ERROR, "transcription failed")

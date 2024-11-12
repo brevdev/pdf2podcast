@@ -10,9 +10,21 @@ def test_transcribe_api():
     )
 
     # Create a proper TranscriptionRequest
-    pdf_metadata = PDFMetadata(
+    pdf_metadata_1 = PDFMetadata(
         filename="sample.pdf",
         markdown="Sample markdown content",
+        summary=""
+    )
+
+    pdf_metadata_2 = PDFMetadata(
+        filename="sample2.pdf",
+        markdown="Sample markdown content 2",
+        summary=""
+    )
+
+    pdf_metadata_3 = PDFMetadata(
+        filename="sample3.pdf",
+        markdown="Sample markdown content 3",
         summary=""
     )
 
@@ -29,7 +41,7 @@ def test_transcribe_api():
         guide="Sample focus instructions",  # Optional
         
         # TranscriptionRequest specific fields
-        pdf_metadata=[pdf_metadata],
+        pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
         job_id="test-job-123"
     )
     
