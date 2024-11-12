@@ -80,7 +80,7 @@ Convert the following outline into a structured JSON format. The final section s
 Output Requirements:
 1. Each segment must include:
    - section name
-   - duration (in minutes)
+   - duration (in minutes) representing the length of the segment
    - list of references (file paths)
    - list of topics, where each topic has:
      - title
@@ -89,6 +89,12 @@ Output Requirements:
 2. Overall structure must include:
    - podcast title
    - complete list of segments
+
+3. Important notes:
+   - References should only appear in the segment's "references" array, not as a topic
+   - Duration represents the length of each segment, not its starting timestamp
+   - Each segment's duration should be a positive number
+   - File paths in references should be listed without descriptions
 
 The result must conform to the following JSON schema:
 {{ schema }}
@@ -240,6 +246,11 @@ Your task is to:
 - Break long monologues into natural back-and-forth dialogue
 - Limit each speaker's turn to maximum 3 sentences
 - Keep the conversation flowing naturally between topics
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one thousand" instead of "1000")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "one thousand dollars" instead of "$1000")
+  * Mathematical symbols should be spoken (e.g., "equals" instead of "=", "plus" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "fifty percent" instead of "50%")
 
 Key guidelines:
 - Avoid explicit transition phrases like "Welcome back" or "Now let's discuss"
