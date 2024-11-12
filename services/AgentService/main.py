@@ -227,7 +227,9 @@ class PromptTracker:
         )
 
 
-def summarize_pdf(pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker) -> Value:
+def summarize_pdf(
+    pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker
+) -> Value:
     """Summarize a single PDF document"""
     template = PodcastPrompts.get_template("summary_prompt")
     prompt = template.render(text=pdf_metadata.markdown)
@@ -584,7 +586,9 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
             )
 
             # Summarize PDFs
-            summarized_pdfs = summarize_pdfs(request.pdf_metadata, job_id, llm_manager, prompt_tracker)
+            summarized_pdfs = summarize_pdfs(
+                request.pdf_metadata, job_id, llm_manager, prompt_tracker
+            )
 
             # Generate initial outline
             raw_outline = generate_raw_outline(
