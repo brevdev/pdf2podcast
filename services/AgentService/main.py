@@ -23,6 +23,7 @@ import logging
 import time
 from prompts import PodcastPrompts
 from langgraph.graph import StateGraph
+from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -51,16 +52,20 @@ class PodcastOutline(BaseModel):
 
 @dataclass
 class ModelConfig:
+    """
+    Wrapper over Langchain's model configuration
+    
+    from langchain_nvidia_ai_endpoints import ChatNVIDIA
+    model = ChatNVIDIA(model="meta/llama2-70b", base_url="https://integrate.api.nvidia.com/v1")
+    """
     name: str
     api_base: str
-    backend_type: str = "nim"
 
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "ModelConfig":
         return cls(
             name=data["name"],
             api_base=data["api_base"],
-            backend_type=data.get("backend_type", "nim"),
         )
 
 
@@ -80,27 +85,25 @@ storage_manager = StorageManager(telemetry=telemetry)
 
 
 class LLMManager:
+    # TODO: remove the backend from the model_configs
     DEFAULT_CONFIGS = {
         "reasoning": {
             "name": "meta/llama-3.1-405b-instruct",
             "api_base": "https://integrate.api.nvidia.com/v1",
-            "backend_type": "nim",
         },
         "iteration": {
             "name": "meta/llama-3.1-405b-instruct",
             "api_base": "https://integrate.api.nvidia.com/v1",
-            "backend_type": "nim",
         },
         "json": {
             "name": "meta/llama-3.1-70b-instruct",
             "api_base": "https://integrate.api.nvidia.com/v1",
-            "backend_type": "nim",
         },
     }
 
     def __init__(self, api_key: str, config_path: Optional[str] = None):
         self.api_key = api_key
-        self._llm_cache: Dict[str, fa.ops.LLM] = {}
+        self._llm_cache: Dict[str, ChatNVIDIA] = {}
         self.model_configs = self._load_configurations(config_path)
 
     def _load_configurations(
@@ -126,20 +129,14 @@ class LLMManager:
 
         return {key: ModelConfig.from_dict(config) for key, config in configs.items()}
 
-    def get_llm(self, model_key: str) -> fa.ops.LLM:
-        """Get or create an LLM instance for the specified model key"""
+    def get_llm(self, model_key: str) -> ChatNVIDIA:
+        """Get or create an ChatNVIDIA model for the specified model key"""
         if model_key not in self.model_configs:
             raise ValueError(f"Unknown model key: {model_key}")
 
         if model_key not in self._llm_cache:
             config = self.model_configs[model_key]
-            backend = BackendConfig(
-                backend_type=config.backend_type,
-                model_name=config.name,
-                api_key=self.api_key,
-                api_base=config.api_base,
-            )
-            self._llm_cache[model_key] = fa.ops.LLM().to(backend)
+            self._llm_cache[model_key] = ChatNVIDIA(model=config.name, base_url=config.api_base).with_retry(stop_after_attempt=5, wait_exponential_jitter=True)
 
         return self._llm_cache[model_key]
 
@@ -154,6 +151,11 @@ class LLMManager:
     ) -> Value:
         """Send a query to the specified model with retry logic"""
         llm = self.get_llm(model_key)
+        
+        # ChatNVIDIA has a `with_structured_output` that uses `nvext`
+        if json_schema:
+            llm = llm.with_structured_output(json_schema)
+
         with telemetry.tracer.start_as_current_span(
             f"agent.query.{query_name}"
         ) as span:
@@ -165,13 +167,11 @@ class LLMManager:
                     f"agent.query.{query_name}.inner"
                 ) as inner_span:
                     try:
-                        extra_body = (
-                            {"nvext": {"guided_json": json_schema}}
-                            if json_schema
-                            else None
-                        )
-                        response = llm(messages, extra_body=extra_body)
-                        return response.get() if sync else response
+                        if sync:
+                            response = llm.invoke(messages)
+                        else:
+                            response = llm.ainvoke(messages)
+                        return response
 
                     except Exception as e:
                         inner_span.set_status(StatusCode.ERROR, "inner query failed")
