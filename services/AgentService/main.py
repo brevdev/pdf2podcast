@@ -12,11 +12,11 @@ from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 import flexagent as fa
 from flexagent.backend import BackendConfig
 from flexagent.engine import Value
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 from pathlib import Path
 from dataclasses import dataclass
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Set
 import json
 import os
 import logging
@@ -41,6 +41,25 @@ class PodcastSegment(BaseModel):
     topics: List[SegmentTopic]
     duration: int
     references: List[str]
+
+    @field_validator("references")
+    @classmethod
+    def validate_references(cls, v: List[str], info) -> List[str]:
+        # Get the valid filenames from the TranscriptionRequest context
+        request = info.context.get("request")
+        if not request or not isinstance(request, TranscriptionRequest):
+            raise ValueError("TranscriptionRequest context is required")
+
+        valid_filenames: Set[str] = {pdf.filename for pdf in request.pdf_metadata}
+
+        # Check if all references are valid filenames
+        invalid_refs = [ref for ref in v if ref not in valid_filenames]
+        if invalid_refs:
+            raise ValueError(
+                f"Invalid references: {invalid_refs}. "
+                f"Must be one of: {sorted(valid_filenames)}"
+            )
+        return v
 
 
 class PodcastOutline(BaseModel):
@@ -315,6 +334,7 @@ def generate_raw_outline(
 
 def generate_structured_outline(
     raw_outline: str,
+    request: TranscriptionRequest,  # Add request parameter
     llm_manager: LLMManager,
     prompt_tracker: PromptTracker,
     job_id: str,
@@ -325,9 +345,23 @@ def generate_structured_outline(
         JobStatus.PROCESSING,
         "Converting raw outline to structured format",
     )
+
+    # Force the model to only reference valid filenames
+    valid_filenames = [pdf.filename for pdf in request.pdf_metadata]
     schema = PodcastOutline.model_json_schema()
+    for prop in schema["definitions"]["PodcastSegment"]["properties"]["references"][
+        "items"
+    ]:
+        prop["enum"] = valid_filenames
+
     template = PodcastPrompts.get_template("multi_pdf_structured_outline_prompt")
-    prompt = template.render(outline=raw_outline, schema=json.dumps(schema, indent=2))
+    prompt = template.render(
+        outline=raw_outline,
+        schema=json.dumps(schema, indent=2),
+        valid_filenames=[
+            pdf.filename for pdf in request.pdf_metadata
+        ],  # Add valid filenames to prompt
+    )
     outline = llm_manager.query(
         "json",
         [{"role": "user", "content": prompt}],
@@ -601,7 +635,7 @@ def process_transcription(job_id: str, request: TranscriptionRequest):
 
             # Convert to structured format
             outline_json = generate_structured_outline(
-                raw_outline, llm_manager, prompt_tracker, job_id
+                raw_outline, request, llm_manager, prompt_tracker, job_id
             )
             outline = PodcastOutline.model_validate(outline_json)
 

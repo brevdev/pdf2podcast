@@ -3,6 +3,8 @@ import os
 from docling.document_converter import DocumentConverter
 from docling_core.types.doc import ImageRefMode
 import logging
+from typing import List, Dict
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -25,18 +27,56 @@ celery_app.conf.update(
 
 
 @celery_app.task(bind=True, max_retries=3)
-def convert_pdf_task(self, file_path: str) -> str:  # Change return type hint
+def convert_pdf_task(self, file_paths: List[str]) -> List[Dict[str, str]]:
     try:
         converter = DocumentConverter()
-        result = converter.convert(file_path)
-        markdown = result.document.export_to_markdown(image_mode=ImageRefMode.EMBEDDED)
-        try:
-            os.unlink(file_path)
-            logger.info(f"Cleaned up file: {file_path}")
-        except Exception as e:
-            logger.error(f"Error cleaning up file: {e}")
-        return markdown
+
+        # Convert paths to Path objects for docling
+        input_paths = [Path(path) for path in file_paths]
+
+        # Use batch conversion
+        results = []
+        conversion_results = converter.convert_all(
+            input_paths,
+            raises_on_error=False,  # Continue processing even if some files fail
+        )
+
+        # Process results
+        for result in conversion_results:
+            file_path = str(result.input.file)
+            try:
+                if result.status == "SUCCESS":
+                    markdown = result.document.export_to_markdown(
+                        image_mode=ImageRefMode.EMBEDDED
+                    )
+                    results.append(
+                        {
+                            "filename": os.path.basename(file_path),
+                            "status": "success",
+                            "content": markdown,
+                        }
+                    )
+                else:
+                    results.append(
+                        {
+                            "filename": os.path.basename(file_path),
+                            "status": "failed",
+                            "error": str(result.errors)
+                            if hasattr(result, "errors")
+                            else "Conversion failed",
+                        }
+                    )
+            finally:
+                # Clean up the temporary file
+                try:
+                    os.unlink(file_path)
+                    logger.info(f"Cleaned up file: {file_path}")
+                except Exception as e:
+                    logger.error(f"Error cleaning up file: {e}")
+
+        return results
+
     except Exception as exc:
-        logger.error(f"Error converting PDF: {exc}")
+        logger.error(f"Error in batch conversion: {exc}")
         retry_in = 5 * (2**self.request.retries)
         raise self.retry(exc=exc, countdown=retry_in)

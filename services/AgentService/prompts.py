@@ -91,10 +91,10 @@ Output Requirements:
    - complete list of segments
 
 3. Important notes:
+   - References must be chosen from this list of valid filenames: {{ valid_filenames }}
    - References should only appear in the segment's "references" array, not as a topic
    - Duration represents the length of each segment, not its starting timestamp
    - Each segment's duration should be a positive number
-   - File paths in references should be listed without descriptions
 
 The result must conform to the following JSON schema:
 {{ schema }}
@@ -279,8 +279,11 @@ Your task is to:
 - Preserve all dialogue content without any omissions
 - Map {{ speaker_1_name }}'s lines to "speaker-1"
 - Map {{ speaker_2_name }}'s lines to "speaker-2"
+- Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
+- Ensure all apostrophes, quotes, and special characters are properly formatted
+- Do not escape Unicode characters in the output
 
-Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions."""
+Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 
 PROMPT_TEMPLATES = {
     "summary_prompt": SUMMARY_PROMPT_STR,
