@@ -48,7 +48,13 @@ dev: check_env
 	fi
 	docker compose down
 	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f docker-compose.yaml --env-file .env up --build
+	docker compose -f docker-compose.yaml --env-file .env up --
+
+# Development target for pdf model service
+model-dev:
+	docker compose -f services/PDFService/PDFModelService/docker-compose.yml down
+	@echo "$(GREEN)Starting development environment...$(NC)"
+	docker compose -f services/PDFService/PDFModelService/docker-compose.yml up --build
 
 # Production target
 prod: check_env
@@ -91,4 +97,4 @@ format:
 
 ruff: lint format
 
-.PHONY: check_env dev clean ruff prod version-bump uv
+.PHONY: check_env dev clean ruff prod version-bump uv model-prod model-dev
