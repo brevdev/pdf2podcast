@@ -31,6 +31,7 @@ class StatusResponse(BaseModel):
     error: Optional[str] = None
     message: Optional[str] = None
 
+
 class SavedPodcast(BaseModel):
     job_id: str
     filename: str
@@ -66,10 +67,12 @@ class ProcessingStep(BaseModel):
 class PromptTracker(BaseModel):
     steps: List[ProcessingStep]
 
+
 class PDFMetadata(BaseModel):
     filename: str
     markdown: str
     summary: str = ""
+
 
 class TranscriptionParams(BaseModel):
     name: str = Field(..., description="Name of the podcast")
@@ -85,9 +88,9 @@ class TranscriptionParams(BaseModel):
         },
     )
     guide: Optional[str] = Field(
-        None,
-        description="Optional guidance for the transcription focus and structure"
+        None, description="Optional guidance for the transcription focus and structure"
     )
+
 
 class TranscriptionRequest(TranscriptionParams):
     pdf_metadata: List[PDFMetadata]

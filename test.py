@@ -212,10 +212,12 @@ def test_api(base_url: str):
     }
 
     # Step 1: Submit the PDF files and get job ID
-    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing...")
+    print(
+        f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing..."
+    )
     print(f"Using voices: {voice_mapping}")
 
-    pdf_files = [open(path, 'rb') for path in sample_pdf_paths]
+    pdf_files = [open(path, "rb") for path in sample_pdf_paths]
     try:
         files = [
             ("files", (os.path.basename(path), pdf_file, "application/pdf"))
@@ -228,7 +230,9 @@ def test_api(base_url: str):
             data={"transcription_params": json.dumps(transcription_params)},
         )
 
-        assert response.status_code == 202, f"Expected status code 202, but got {response.status_code}"
+        assert (
+            response.status_code == 202
+        ), f"Expected status code 202, but got {response.status_code}"
         job_data = response.json()
         assert "job_id" in job_data, "Response missing job_id"
         job_id = job_data["job_id"]
@@ -269,6 +273,7 @@ def test_api(base_url: str):
 
     finally:
         monitor.stop()
+
 
 if __name__ == "__main__":
     base_url = os.getenv("API_SERVICE_URL", "http://localhost:8002")

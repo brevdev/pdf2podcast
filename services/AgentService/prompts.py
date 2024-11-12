@@ -271,21 +271,21 @@ Your task is to:
 Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions."""
 
 PROMPT_TEMPLATES = {
-    'summary_prompt': SUMMARY_PROMPT_STR,
-    'multi_pdf_outline_prompt': MULTI_PDF_OUTLINE_PROMPT_STR,
-    'multi_pdf_structured_outline_prompt': MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR,
-    'prompt_with_references': PROMPT_WITH_REFERENCES_STR,
-    'prompt_no_references': PROMPT_NO_REFERENCES_STR,
-    'transcript_to_dialogue_prompt': TRANSCRIPT_TO_DIALOGUE_PROMPT_STR,
+    "summary_prompt": SUMMARY_PROMPT_STR,
+    "multi_pdf_outline_prompt": MULTI_PDF_OUTLINE_PROMPT_STR,
+    "multi_pdf_structured_outline_prompt": MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR,
+    "prompt_with_references": PROMPT_WITH_REFERENCES_STR,
+    "prompt_no_references": PROMPT_NO_REFERENCES_STR,
+    "transcript_to_dialogue_prompt": TRANSCRIPT_TO_DIALOGUE_PROMPT_STR,
     "revise_dialogue_prompt": REVISE_DIALOGUE_PROMPT_STR,
-    "podcast_dialogue_prompt": PODCAST_DIALOGUE_PROMPT_STR
+    "podcast_dialogue_prompt": PODCAST_DIALOGUE_PROMPT_STR,
 }
 
 # Create Jinja templates once
 TEMPLATES: Dict[str, jinja2.Template] = {
-    name: jinja2.Template(template)
-    for name, template in PROMPT_TEMPLATES.items()
+    name: jinja2.Template(template) for name, template in PROMPT_TEMPLATES.items()
 }
+
 
 class PodcastPrompts:
     def __getattr__(self, name: str) -> str:

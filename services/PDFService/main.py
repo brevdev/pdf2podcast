@@ -160,7 +160,10 @@ async def process_pdf(job_id: str, file_content: bytes):
             )
             raise
 
-async def process_multiple_pdfs(job_id: str, contents: List[bytes], filenames: List[str]):
+
+async def process_multiple_pdfs(
+    job_id: str, contents: List[bytes], filenames: List[str]
+):
     """Process multiple PDFs and return metadata for each"""
     with telemetry.tracer.start_as_current_span("pdf.process_multiple_pdfs") as span:
         try:
@@ -171,20 +174,30 @@ async def process_multiple_pdfs(job_id: str, contents: List[bytes], filenames: L
             # Process all PDFs in parallel
             tasks = []
             for idx, (content, filename) in enumerate(zip(contents, filenames)):
-                with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".pdf"
+                ) as temp_file:
                     temp_file.write(content)
-                    tasks.append((temp_file.name, filename, convert_pdf_to_markdown(temp_file.name)))
+                    tasks.append(
+                        (
+                            temp_file.name,
+                            filename,
+                            convert_pdf_to_markdown(temp_file.name),
+                        )
+                    )
 
             # Wait for all conversions to complete
             pdf_metadata_list = []
             for temp_file_path, filename, task in tasks:
                 try:
                     markdown = await task
-                    pdf_metadata_list.append({
-                        "filename": filename,
-                        "markdown": markdown,
-                        "summary": ""  # Empty summary placeholder
-                    })
+                    pdf_metadata_list.append(
+                        {
+                            "filename": filename,
+                            "markdown": markdown,
+                            "summary": "",  # Empty summary placeholder
+                        }
+                    )
                 finally:
                     os.unlink(temp_file_path)
 
@@ -202,6 +215,7 @@ async def process_multiple_pdfs(job_id: str, contents: List[bytes], filenames: L
                 job_id, JobStatus.FAILED, f"PDF conversion failed: {str(e)}"
             )
             raise
+
 
 @app.post("/convert", status_code=202)
 async def convert_pdf(
@@ -237,6 +251,7 @@ async def convert_pdf(
         background_tasks.add_task(process_multiple_pdfs, job_id, contents, filenames)
 
         return {"job_id": job_id}
+
 
 @app.get("/status/{job_id}")
 async def get_status(job_id: str) -> StatusResponse:  # Add return type annotation

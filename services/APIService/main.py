@@ -117,10 +117,9 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     finally:
         manager.disconnect(websocket, job_id)
 
+
 def process_pdf_task(
-    job_id: str, 
-    files_content: List[bytes], 
-    transcription_params: TranscriptionParams
+    job_id: str, files_content: List[bytes], transcription_params: TranscriptionParams
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf_task") as span:
         span.set_attribute("job_id", job_id)
@@ -137,16 +136,18 @@ def process_pdf_task(
                     "application/pdf",
                     transcription_params,
                 )
-            logger.info(f"Stored {len(files_content)} original PDFs for {job_id} in storage")
+            logger.info(
+                f"Stored {len(files_content)} original PDFs for {job_id} in storage"
+            )
 
             # Send all PDFs to PDF Service
-            files = [("files", (f"file_{i}.pdf", content, "application/pdf")) 
-                    for i, content in enumerate(files_content)]
-            
-            response = requests.post(
-                f"{PDF_SERVICE_URL}/convert",
-                files=files,
-                data={"job_id": job_id}
+            files = [
+                ("files", (f"file_{i}.pdf", content, "application/pdf"))
+                for i, content in enumerate(files_content)
+            ]
+
+            requests.post(
+                f"{PDF_SERVICE_URL}/convert", files=files, data={"job_id": job_id}
             )
 
             # Monitor services
@@ -258,15 +259,19 @@ async def process_pdf(
     with telemetry.tracer.start_as_current_span("api.process_pdf") as span:
         # Convert single file to list for consistent handling
         files_list = [files] if isinstance(files, UploadFile) else files
-        
+
         span.set_attribute("request", transcription_params)
         span.set_attribute("num_files", len(files_list))
-        
+
         # Validate all files are PDFs
         for file in files_list:
             if file.content_type != "application/pdf":
-                span.set_status(status=StatusCode.ERROR, description="invalid file type")
-                raise HTTPException(status_code=400, detail="Only PDF files are allowed")
+                span.set_status(
+                    status=StatusCode.ERROR, description="invalid file type"
+                )
+                raise HTTPException(
+                    status_code=400, detail="Only PDF files are allowed"
+                )
 
         try:
             params_dict = json.loads(transcription_params)
@@ -291,6 +296,7 @@ async def process_pdf(
         span.set_status(status=StatusCode.OK)
 
         return {"job_id": job_id}
+
 
 @app.get("/status/{job_id}")
 async def get_status(job_id: str):
