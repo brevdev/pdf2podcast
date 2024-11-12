@@ -196,6 +196,7 @@ There are two speakers:
     - Mention the speakers' names occasionally to make the conversation more natural.
     - Ensure the guest's responses are substantiated by the input text, avoiding unsupported claims.
     - Avoid long monologues; break information into interactive exchanges.
+    - Use dialogue tags to express emotions (e.g., "he said excitedly", "she replied thoughtfully") to guide voice synthesis.
     - Strive for authenticity. Include:
         - Moments of genuine curiosity or surprise from the host.
         - Instances where the guest may pause to articulate complex ideas.
