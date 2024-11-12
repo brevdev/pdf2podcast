@@ -183,7 +183,7 @@ def test_saved_podcasts(base_url: str, job_id: str):
 def test_api(base_url: str):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
-        "speaker-2": "9BWtsMINqrRacOk9x",
+        "speaker-2": "9BWtsMINqrJLrRacOk9x",
     }
 
     process_url = f"{base_url}/process_pdf"
@@ -195,7 +195,8 @@ def test_api(base_url: str):
         raise FileNotFoundError(f"Samples directory not found at {samples_dir}")
 
     sample_pdf_paths = [
-        os.path.join(samples_dir, "Rosie Device-Level TAVA.pdf"),
+        os.path.join(samples_dir, "nvidia-market-report.pdf"),
+        os.path.join(samples_dir, "nvidia-10q.pdf"),
     ]
 
     # Ensure all sample PDF files exist

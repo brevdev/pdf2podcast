@@ -11,7 +11,7 @@ import logging
 import time
 import asyncio
 import json
-from typing import Optional, List
+from typing import Optional, List, Tuple
 from pydantic import BaseModel
 
 logging.basicConfig(level=logging.INFO)
