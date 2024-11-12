@@ -183,7 +183,7 @@ def test_saved_podcasts(base_url: str, job_id: str):
 def test_api(base_url: str):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
-        "speaker-2": "9BWtsMINqrJLrRacOk9x",
+        "speaker-2": "9BWtsMINqrRacOk9x",
     }
 
     process_url = f"{base_url}/process_pdf"
@@ -202,13 +202,14 @@ def test_api(base_url: str):
     for pdf_path in sample_pdf_paths:
         assert os.path.exists(pdf_path), f"Sample PDF file not found at {pdf_path}"
 
-    # Prepare the payload
+    # Prepare the payload with updated schema
     transcription_params = {
         "name": "ishan-test",
         "duration": 5,
         "speaker_1_name": "Bob",
         "speaker_2_name": "Kate",
         "voice_mapping": voice_mapping,
+        "guide": None,  # Optional guidance for transcription focus
     }
 
     # Step 1: Submit the PDF files and get job ID
