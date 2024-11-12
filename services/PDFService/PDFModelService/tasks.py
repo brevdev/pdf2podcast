@@ -1,6 +1,7 @@
 from celery import Celery
 import os
 from docling.document_converter import DocumentConverter
+from docling_core.types.doc import ImageRefMode
 import logging
 
 logger = logging.getLogger(__name__)
@@ -28,7 +29,7 @@ def convert_pdf_task(self, file_path: str) -> str:  # Change return type hint
     try:
         converter = DocumentConverter()
         result = converter.convert(file_path)
-        markdown = result.document.export_to_markdown()
+        markdown = result.document.export_to_markdown(image_mode=ImageRefMode.EMBEDDED)
         try:
             os.unlink(file_path)
             logger.info(f"Cleaned up file: {file_path}")

@@ -181,59 +181,68 @@ def test_saved_podcasts(base_url: str, job_id: str):
 
 
 def test_api(base_url: str):
-    # Define default voice mapping
     voice_mapping = {
-        "speaker-1": "iP95p4xoKVk53GoZ742B",  # Example voice ID for speaker 1
-        "speaker-2": "9BWtsMINqrJLrRacOk9x",  # Example voice ID for speaker 2
+        "speaker-1": "iP95p4xoKVk53GoZ742B",
+        "speaker-2": "9BWtsMINqrJLrRacOk9x",
     }
 
-    # API endpoint
     process_url = f"{base_url}/process_pdf"
 
-    # Path to a sample PDF file for testing
     current_dir = os.path.dirname(os.path.abspath(__file__))
     samples_dir = os.path.join(current_dir, "samples")
 
-    # Ensure samples directory exists
     if not os.path.exists(samples_dir):
         raise FileNotFoundError(f"Samples directory not found at {samples_dir}")
 
-    sample_pdf_path = os.path.join(samples_dir, "Rosie Device-Level TAVA.pdf")
+    sample_pdf_paths = [
+        os.path.join(samples_dir, "nvidia-market-report.pdf"),
+        os.path.join(samples_dir, "nvidia-10q.pdf"),
+    ]
 
-    # Ensure the sample PDF file exists
-    assert os.path.exists(
-        sample_pdf_path
-    ), f"Sample PDF file not found at {sample_pdf_path}"
+    # Ensure all sample PDF files exist
+    for pdf_path in sample_pdf_paths:
+        assert os.path.exists(pdf_path), f"Sample PDF file not found at {pdf_path}"
 
-    # Prepare the payload
+    # Prepare the payload with updated schema
     transcription_params = {
         "name": "ishan-test",
         "duration": 5,
-        "speaker_1_name": "Blackwell",
-        "speaker_2_name": "Hopper",
-        "model": "meta/llama-3.1-405b-instruct",
-        "voice_mapping": voice_mapping,  # Add voice mapping
+        "speaker_1_name": "Bob",
+        "speaker_2_name": "Kate",
+        "voice_mapping": voice_mapping,
+        "guide": None,  # Optional guidance for transcription focus
     }
 
-    # Step 1: Submit the PDF file and get job ID
-    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDF for processing...")
+    # Step 1: Submit the PDF files and get job ID
+    print(
+        f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing..."
+    )
     print(f"Using voices: {voice_mapping}")
 
-    with open(sample_pdf_path, "rb") as pdf_file:
-        files = {"file": ("Rosie Device-Level TAVA.pdf", pdf_file, "application/pdf")}
+    pdf_files = [open(path, "rb") for path in sample_pdf_paths]
+    try:
+        files = [
+            ("files", (os.path.basename(path), pdf_file, "application/pdf"))
+            for path, pdf_file in zip(sample_pdf_paths, pdf_files)
+        ]
+
         response = requests.post(
             process_url,
             files=files,
             data={"transcription_params": json.dumps(transcription_params)},
         )
 
-    assert (
-        response.status_code == 202
-    ), f"Expected status code 202, but got {response.status_code}"
-    job_data = response.json()
-    assert "job_id" in job_data, "Response missing job_id"
-    job_id = job_data["job_id"]
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Job ID received: {job_id}")
+        assert (
+            response.status_code == 202
+        ), f"Expected status code 202, but got {response.status_code}"
+        job_data = response.json()
+        assert "job_id" in job_data, "Response missing job_id"
+        job_id = job_data["job_id"]
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Job ID received: {job_id}")
+
+    finally:
+        for f in pdf_files:
+            f.close()
 
     # Step 2: Start monitoring status via WebSocket
     monitor = StatusMonitor(base_url, job_id)
@@ -241,7 +250,7 @@ def test_api(base_url: str):
 
     try:
         # Wait for TTS completion or timeout
-        max_wait = 40 * 60  # 20 minutes in seconds
+        max_wait = 40 * 60
         if not monitor.tts_completed.wait(timeout=max_wait):
             raise TimeoutError(f"Test timed out after {max_wait} seconds")
 

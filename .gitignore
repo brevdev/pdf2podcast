@@ -11,3 +11,4 @@ get_helm.sh
 .ruff_cache
 data/minio
 eval.txt
+.DS_Store

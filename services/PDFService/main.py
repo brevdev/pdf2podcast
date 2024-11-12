@@ -10,8 +10,10 @@ import os
 import logging
 import time
 import asyncio
-from typing import Optional
+import json
+from typing import Optional, List, Tuple
 from pydantic import BaseModel
+from collections.abc import Coroutine
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -160,31 +162,94 @@ async def process_pdf(job_id: str, file_content: bytes):
             raise
 
 
+async def process_multiple_pdfs(
+    job_id: str, contents: List[bytes], filenames: List[str]
+):
+    """Process multiple PDFs and return metadata for each"""
+    with telemetry.tracer.start_as_current_span("pdf.process_multiple_pdfs") as span:
+        try:
+            job_manager.update_status(
+                job_id, JobStatus.PROCESSING, f"Processing {len(contents)} PDFs"
+            )
+
+            # Process all PDFs in parallel
+            tasks: List[Tuple[str, str, Coroutine]] = []
+            for idx, (content, filename) in enumerate(zip(contents, filenames)):
+                with tempfile.NamedTemporaryFile(
+                    delete=False, suffix=".pdf"
+                ) as temp_file:
+                    temp_file.write(content)
+                    tasks.append(
+                        (
+                            temp_file.name,
+                            filename,
+                            convert_pdf_to_markdown(temp_file.name),
+                        )
+                    )
+
+            # Wait for all conversions to complete
+            pdf_metadata_list = []
+            for temp_file_path, filename, task in tasks:
+                try:
+                    markdown = await task
+                    pdf_metadata_list.append(
+                        {
+                            "filename": filename,
+                            "markdown": markdown,
+                            "summary": "",  # Empty summary placeholder
+                        }
+                    )
+                finally:
+                    os.unlink(temp_file_path)
+
+            # Store result
+            job_manager.set_result(job_id, json.dumps(pdf_metadata_list).encode())
+            job_manager.update_status(
+                job_id, JobStatus.COMPLETED, "All PDFs processed successfully"
+            )
+
+        except Exception as e:
+            logger.error(f"Error processing PDFs: {str(e)}")
+            span.set_status(StatusCode.ERROR)
+            span.record_exception(e)
+            job_manager.update_status(
+                job_id, JobStatus.FAILED, f"PDF conversion failed: {str(e)}"
+            )
+            raise
+
+
 @app.post("/convert", status_code=202)
 async def convert_pdf(
     background_tasks: BackgroundTasks,
-    file: UploadFile = File(...),
+    files: List[UploadFile] = File(...),
     job_id: Optional[str] = None,
 ):
-    """Convert PDF to Markdown"""
+    """Convert multiple PDFs to Markdown"""
     with telemetry.tracer.start_as_current_span("pdf.convert_pdf") as span:
-        span.set_attribute("file_content_type", file.content_type)
-        span.set_attribute("file_size", file.size)
-        if file.content_type != "application/pdf":
-            raise HTTPException(status_code=400, detail="File must be a PDF")
+        # Validate all files are PDFs
+        for file in files:
+            if file.content_type != "application/pdf":
+                raise HTTPException(status_code=400, detail="All files must be PDFs")
+            span.set_attribute(f"file_{file.filename}_size", file.size)
 
-        # Read file content
-        content = await file.read()
+        # Read all file contents and filenames
+        contents = []
+        filenames = []
+        for file in files:
+            content = await file.read()
+            contents.append(content)
+            filenames.append(file.filename)
 
         # Create job
         if not job_id:
             job_id = str(int(time.time()))
 
         span.set_attribute("job_id", job_id)
+        span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(process_pdf, job_id, content)
+        background_tasks.add_task(process_multiple_pdfs, job_id, contents, filenames)
 
         return {"job_id": job_id}
 

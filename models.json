@@ -9,7 +9,7 @@
       "api_base": "https://nim-pc8kmx5ae.brevlab.com/v1",
       "backend_type": "nim"
     },
-    "subsegments": {
+    "iteration": {
       "name": "meta/llama-3.1-70b-instruct",
       "api_base": "https://small-nim-pc8kmx5ae.brevlab.com/v1",
       "backend_type": "nim"

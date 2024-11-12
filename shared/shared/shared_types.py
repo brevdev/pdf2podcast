@@ -32,22 +32,6 @@ class StatusResponse(BaseModel):
     message: Optional[str] = None
 
 
-class TranscriptionParams(BaseModel):
-    name: str = Field(..., description="Name of the podcast")
-    duration: int = Field(..., description="Duration in minutes")
-    speaker_1_name: str = Field(..., description="Name of the first speaker")
-    speaker_2_name: str = Field(..., description="Name of the second speaker")
-    model: str = Field(..., description="Model name/path to use for transcription")
-    voice_mapping: Dict[str, str] = Field(
-        ...,
-        description="Mapping of speaker IDs to voice IDs",
-        example={
-            "speaker-1": "iP95p4xoKVk53GoZ742B",
-            "speaker-2": "9BWtsMINqrJLrRacOk9x",
-        },
-    )
-
-
 class SavedPodcast(BaseModel):
     job_id: str
     filename: str
@@ -82,3 +66,32 @@ class ProcessingStep(BaseModel):
 
 class PromptTracker(BaseModel):
     steps: List[ProcessingStep]
+
+
+class PDFMetadata(BaseModel):
+    filename: str
+    markdown: str
+    summary: str = ""
+
+
+class TranscriptionParams(BaseModel):
+    name: str = Field(..., description="Name of the podcast")
+    duration: int = Field(..., description="Duration in minutes")
+    speaker_1_name: str = Field(..., description="Name of the first speaker")
+    speaker_2_name: str = Field(..., description="Name of the second speaker")
+    voice_mapping: Dict[str, str] = Field(
+        ...,
+        description="Mapping of speaker IDs to voice IDs",
+        example={
+            "speaker-1": "iP95p4xoKVk53GoZ742B",
+            "speaker-2": "9BWtsMINqrJLrRacOk9x",
+        },
+    )
+    guide: Optional[str] = Field(
+        None, description="Optional guidance for the transcription focus and structure"
+    )
+
+
+class TranscriptionRequest(TranscriptionParams):
+    pdf_metadata: List[PDFMetadata]
+    job_id: str
