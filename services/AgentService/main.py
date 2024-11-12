@@ -12,11 +12,11 @@ from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 import flexagent as fa
 from flexagent.backend import BackendConfig
 from flexagent.engine import Value
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel
 from pathlib import Path
 from dataclasses import dataclass
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Optional, Any, Set
+from typing import List, Dict, Optional, Any
 import json
 import os
 import logging
@@ -41,25 +41,6 @@ class PodcastSegment(BaseModel):
     topics: List[SegmentTopic]
     duration: int
     references: List[str]
-
-    @field_validator("references")
-    @classmethod
-    def validate_references(cls, v: List[str], info) -> List[str]:
-        # Get the valid filenames from the TranscriptionRequest context
-        request = info.context.get("request")
-        if not request or not isinstance(request, TranscriptionRequest):
-            raise ValueError("TranscriptionRequest context is required")
-
-        valid_filenames: Set[str] = {pdf.filename for pdf in request.pdf_metadata}
-
-        # Check if all references are valid filenames
-        invalid_refs = [ref for ref in v if ref not in valid_filenames]
-        if invalid_refs:
-            raise ValueError(
-                f"Invalid references: {invalid_refs}. "
-                f"Must be one of: {sorted(valid_filenames)}"
-            )
-        return v
 
 
 class PodcastOutline(BaseModel):
