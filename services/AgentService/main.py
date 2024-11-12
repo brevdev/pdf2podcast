@@ -9,19 +9,21 @@ from shared.shared_types import (
 from shared.storage import StorageManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
-#import flexagent as fa
+
+# import flexagent as fa
 # from flexagent.backend import BackendConfig
-# from flexagent.engine import Value
+from flexagent.engine import Value
 from pydantic import BaseModel
 from pathlib import Path
 from dataclasses import dataclass
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Optional, Any, TypedDict
+from typing import List, Dict, Optional, Any
 import json
 import os
 import logging
 import time
 from prompts import PodcastPrompts
+
 # from langgraph.graph import StateGraph
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
@@ -54,10 +56,11 @@ class PodcastOutline(BaseModel):
 class ModelConfig:
     """
     Wrapper over Langchain's model configuration
-    
+
     from langchain_nvidia_ai_endpoints import ChatNVIDIA
     model = ChatNVIDIA(model="meta/llama2-70b", base_url="https://integrate.api.nvidia.com/v1")
     """
+
     name: str
     api_base: str
 
@@ -100,7 +103,12 @@ class LLMManager:
         },
     }
 
-    def __init__(self, api_key: str, telemetry: OpenTelemetryInstrumentation, config_path: Optional[str] = None):
+    def __init__(
+        self,
+        api_key: str,
+        telemetry: OpenTelemetryInstrumentation,
+        config_path: Optional[str] = None,
+    ):
         """
         Initialize LLMManager with telemetry
         requires: OpenTelemetryInstrumentation instance for tracing
@@ -115,7 +123,9 @@ class LLMManager:
             logger.error(f"Failed to initialize LLMManager: {e}")
             raise
 
-    def _load_configurations(self, config_path: Optional[str]) -> Dict[str, ModelConfig]:
+    def _load_configurations(
+        self, config_path: Optional[str]
+    ) -> Dict[str, ModelConfig]:
         """Load model configurations from JSON file if provided, otherwise use defaults"""
         configs = self.DEFAULT_CONFIGS.copy()
         if config_path:
@@ -142,9 +152,7 @@ class LLMManager:
             config = self.model_configs[model_key]
             # Store base model without transformations
             self._llm_cache[model_key] = ChatNVIDIA(
-                model=config.name, 
-                base_url=config.api_base,
-                nvidia_api_key=self.api_key
+                model=config.name, base_url=config.api_base, nvidia_api_key=self.api_key
             )
         return self._llm_cache[model_key]
 
@@ -158,34 +166,38 @@ class LLMManager:
         retries: int = 5,
     ) -> Any:
         """Send a query to the specified model with retry logic"""
-        with self.telemetry.tracer.start_as_current_span(f"agent.query.{query_name}") as span:
+        with self.telemetry.tracer.start_as_current_span(
+            f"agent.query.{query_name}"
+        ) as span:
             span.set_attribute("model_key", model_key)
             span.set_attribute("sync", sync)
             span.set_attribute("retries", retries)
-            
+
             try:
                 llm = self.get_llm(model_key)
-                
+
                 if json_schema:
                     llm = llm.with_structured_output(json_schema)
-                
+
                 llm = llm.with_retry(
-                    stop_after_attempt=retries,
-                    wait_exponential_jitter=True
+                    stop_after_attempt=retries, wait_exponential_jitter=True
                 )
 
                 if sync:
                     response = llm.invoke(messages)
                 else:
                     response = llm.ainvoke(messages)
-                
+
                 return response
 
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
                 logger.error(f"Query failed: {e}")
-                raise Exception(f"Failed to get response after {retries} attempts") from e
+                raise Exception(
+                    f"Failed to get response after {retries} attempts"
+                ) from e
+
 
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
@@ -226,6 +238,7 @@ class PromptTracker:
             f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
         )
 
+
 # class PodcastState(TypedDict):
 #     summarized_pdfs: List[PDFMetadata]
 #     raw_outline: str
@@ -244,12 +257,12 @@ class PromptTracker:
 #         self.request = request
 #         self.schema = PodcastOutline.model_json_schema()
 #         self._build_graph()
-    
+
 #     def _build_graph(self):
 #         podcast_graph = StateGraph()
 
 #         podcast_graph.add_node("summarize_pdfs", self._summarize_pdfs)
-    
+
 #     async def _summarize_pdfs(self):
 #         """This is a parallel call function"""
 #         summarized_pdfs: List[PDFMetadata] = []
@@ -706,7 +719,6 @@ def get_output(job_id: str):
 def health():
     return {
         "status": "healthy",
-        "version": fa.__version__,
     }
 
 
