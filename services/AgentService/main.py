@@ -16,12 +16,13 @@ from pydantic import BaseModel
 from pathlib import Path
 from dataclasses import dataclass
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, TypedDict, Annotated
 import json
 import os
 import logging
 import time
 from prompts import PodcastPrompts
+from langgraph.graph import StateGraph
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -237,8 +238,24 @@ class PodcastState(TypedDict):
     final_conversation: Dict[str, Any]
 
 class PodcastGraph:
-    def __init__(self, llm_manager: LLMManager, storage_manager: StorageManager):
-        
+    def __init__(self, state: PodcastState, llm_manager: LLMManager, storage_manager: StorageManager, request: TranscriptionRequest):
+        self.state = state
+        self.llm_manager = llm_manager
+        self.storage_manager = storage_manager
+        self.request = request
+        self.schema = PodcastOutline.model_json_schema()
+        self._build_graph()
+    
+    def _build_graph(self):
+        podcast_graph = StateGraph()
+
+        podcast_graph.add_node("summarize_pdfs", self._summarize_pdfs)
+    
+    async def _summarize_pdfs(self):
+        """This is a parallel call function"""
+        summarized_pdfs: List[PDFMetadata] = []
+
+        return {"summarized_pdfs": summarized_pdfs}
 
 
 def summarize_pdf(
