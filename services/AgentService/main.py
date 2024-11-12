@@ -9,20 +9,20 @@ from shared.shared_types import (
 from shared.storage import StorageManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
-import flexagent as fa
-from flexagent.backend import BackendConfig
-from flexagent.engine import Value
+#import flexagent as fa
+# from flexagent.backend import BackendConfig
+# from flexagent.engine import Value
 from pydantic import BaseModel
 from pathlib import Path
 from dataclasses import dataclass
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Optional, Any, TypedDict, Annotated
+from typing import List, Dict, Optional, Any, TypedDict
 import json
 import os
 import logging
 import time
 from prompts import PodcastPrompts
-from langgraph.graph import StateGraph
+# from langgraph.graph import StateGraph
 from langchain_nvidia_ai_endpoints import ChatNVIDIA
 
 logging.basicConfig(level=logging.INFO)
@@ -85,7 +85,6 @@ storage_manager = StorageManager(telemetry=telemetry)
 
 
 class LLMManager:
-    # TODO: remove the backend from the model_configs
     DEFAULT_CONFIGS = {
         "reasoning": {
             "name": "meta/llama-3.1-405b-instruct",
@@ -101,17 +100,24 @@ class LLMManager:
         },
     }
 
-    def __init__(self, api_key: str, config_path: Optional[str] = None):
-        self.api_key = api_key
-        self._llm_cache: Dict[str, ChatNVIDIA] = {}
-        self.model_configs = self._load_configurations(config_path)
+    def __init__(self, api_key: str, telemetry: OpenTelemetryInstrumentation, config_path: Optional[str] = None):
+        """
+        Initialize LLMManager with telemetry
+        requires: OpenTelemetryInstrumentation instance for tracing
+        """
+        try:
+            self.api_key = api_key
+            self.telemetry = telemetry
+            self._llm_cache: Dict[str, ChatNVIDIA] = {}
+            self.model_configs = self._load_configurations(config_path)
+            logger.info("Successfully initialized LLMManager")
+        except Exception as e:
+            logger.error(f"Failed to initialize LLMManager: {e}")
+            raise
 
-    def _load_configurations(
-        self, config_path: Optional[str]
-    ) -> Dict[str, ModelConfig]:
+    def _load_configurations(self, config_path: Optional[str]) -> Dict[str, ModelConfig]:
         """Load model configurations from JSON file if provided, otherwise use defaults"""
         configs = self.DEFAULT_CONFIGS.copy()
-
         if config_path:
             try:
                 config_path = Path(config_path)
@@ -126,18 +132,20 @@ class LLMManager:
             except Exception as e:
                 logger.error(f"Error loading config file: {e}")
                 logger.warning("Using default configurations")
-
         return {key: ModelConfig.from_dict(config) for key, config in configs.items()}
 
     def get_llm(self, model_key: str) -> ChatNVIDIA:
-        """Get or create an ChatNVIDIA model for the specified model key"""
+        """Get or create a ChatNVIDIA model for the specified model key"""
         if model_key not in self.model_configs:
             raise ValueError(f"Unknown model key: {model_key}")
-
         if model_key not in self._llm_cache:
             config = self.model_configs[model_key]
-            self._llm_cache[model_key] = ChatNVIDIA(model=config.name, base_url=config.api_base).with_retry(stop_after_attempt=5, wait_exponential_jitter=True)
-
+            # Store base model without transformations
+            self._llm_cache[model_key] = ChatNVIDIA(
+                model=config.name, 
+                base_url=config.api_base,
+                nvidia_api_key=self.api_key
+            )
         return self._llm_cache[model_key]
 
     def query(
@@ -148,45 +156,36 @@ class LLMManager:
         json_schema: Optional[Dict] = None,
         sync: bool = True,
         retries: int = 5,
-    ) -> Value:
+    ) -> Any:
         """Send a query to the specified model with retry logic"""
-        llm = self.get_llm(model_key)
-        
-        # ChatNVIDIA has a `with_structured_output` that uses `nvext`
-        if json_schema:
-            llm = llm.with_structured_output(json_schema)
-
-        with telemetry.tracer.start_as_current_span(
-            f"agent.query.{query_name}"
-        ) as span:
+        with self.telemetry.tracer.start_as_current_span(f"agent.query.{query_name}") as span:
             span.set_attribute("model_key", model_key)
             span.set_attribute("sync", sync)
             span.set_attribute("retries", retries)
-            for attempt in range(retries):
-                with telemetry.tracer.start_as_current_span(
-                    f"agent.query.{query_name}.inner"
-                ) as inner_span:
-                    try:
-                        if sync:
-                            response = llm.invoke(messages)
-                        else:
-                            response = llm.ainvoke(messages)
-                        return response
+            
+            try:
+                llm = self.get_llm(model_key)
+                
+                if json_schema:
+                    llm = llm.with_structured_output(json_schema)
+                
+                llm = llm.with_retry(
+                    stop_after_attempt=retries,
+                    wait_exponential_jitter=True
+                )
 
-                    except Exception as e:
-                        inner_span.set_status(StatusCode.ERROR, "inner query failed")
-                        inner_span.record_exception(e)
-                        logger.error(
-                            f"Attempt {attempt + 1}/{retries} failed: {str(e)}"
-                        )
-                        if attempt == retries - 1:
-                            span.set_status(StatusCode.ERROR, "query failed")
-                            span.record_exception(e)
-                            raise Exception(
-                                f"Failed to get response after {retries} attempts"
-                            ) from e
-                        time.sleep(3)
+                if sync:
+                    response = llm.invoke(messages)
+                else:
+                    response = llm.ainvoke(messages)
+                
+                return response
 
+            except Exception as e:
+                span.set_status(StatusCode.ERROR)
+                span.record_exception(e)
+                logger.error(f"Query failed: {e}")
+                raise Exception(f"Failed to get response after {retries} attempts") from e
 
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
@@ -227,35 +226,35 @@ class PromptTracker:
             f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
         )
 
-class PodcastState(TypedDict):
-    summarized_pdfs: List[PDFMetadata]
-    raw_outline: str
-    structured_outline: Dict[str, Any]
-    outline: PodcastOutline
-    segments: Dict[str, Value]
-    segment_dialogues: List[Dict[str, Value]]
-    combined_dialogue: str
-    final_conversation: Dict[str, Any]
+# class PodcastState(TypedDict):
+#     summarized_pdfs: List[PDFMetadata]
+#     raw_outline: str
+#     structured_outline: Dict[str, Any]
+#     outline: PodcastOutline
+#     segments: Dict[str, Value]
+#     segment_dialogues: List[Dict[str, Value]]
+#     combined_dialogue: str
+#     final_conversation: Dict[str, Any]
 
-class PodcastGraph:
-    def __init__(self, state: PodcastState, llm_manager: LLMManager, storage_manager: StorageManager, request: TranscriptionRequest):
-        self.state = state
-        self.llm_manager = llm_manager
-        self.storage_manager = storage_manager
-        self.request = request
-        self.schema = PodcastOutline.model_json_schema()
-        self._build_graph()
+# class PodcastGraph:
+#     def __init__(self, state: PodcastState, llm_manager: LLMManager, storage_manager: StorageManager, request: TranscriptionRequest):
+#         self.state = state
+#         self.llm_manager = llm_manager
+#         self.storage_manager = storage_manager
+#         self.request = request
+#         self.schema = PodcastOutline.model_json_schema()
+#         self._build_graph()
     
-    def _build_graph(self):
-        podcast_graph = StateGraph()
+#     def _build_graph(self):
+#         podcast_graph = StateGraph()
 
-        podcast_graph.add_node("summarize_pdfs", self._summarize_pdfs)
+#         podcast_graph.add_node("summarize_pdfs", self._summarize_pdfs)
     
-    async def _summarize_pdfs(self):
-        """This is a parallel call function"""
-        summarized_pdfs: List[PDFMetadata] = []
+#     async def _summarize_pdfs(self):
+#         """This is a parallel call function"""
+#         summarized_pdfs: List[PDFMetadata] = []
 
-        return {"summarized_pdfs": summarized_pdfs}
+#         return {"summarized_pdfs": summarized_pdfs}
 
 
 def summarize_pdf(
