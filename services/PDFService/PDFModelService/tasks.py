@@ -30,18 +30,12 @@ celery_app.conf.update(
 def convert_pdf_task(self, file_paths: List[str]) -> List[Dict[str, str]]:
     try:
         converter = DocumentConverter()
-
-        # Convert paths to Path objects for docling
-        input_paths = [Path(path) for path in file_paths]
-
-        # Use batch conversion
         results = []
         conversion_results = converter.convert_all(
-            input_paths,
+            file_paths,
             raises_on_error=False,  # Continue processing even if some files fail
         )
 
-        # Process results
         for result in conversion_results:
             file_path = str(result.input.file)
             try:
