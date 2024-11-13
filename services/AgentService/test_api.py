@@ -4,28 +4,23 @@ import os
 import time
 from shared.shared_types import TranscriptionRequest, PDFMetadata
 
+
 def test_transcribe_api():
     # API endpoints
     BASE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
     TRANSCRIBE_URL = f"{BASE_URL}/transcribe"
-    
+
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
-        filename="sample.pdf",
-        markdown="Sample markdown content",
-        summary=""
+        filename="sample.pdf", markdown="Sample markdown content", summary=""
     )
 
     pdf_metadata_2 = PDFMetadata(
-        filename="sample2.pdf",
-        markdown="Sample markdown content 2",
-        summary=""
+        filename="sample2.pdf", markdown="Sample markdown content 2", summary=""
     )
 
     pdf_metadata_3 = PDFMetadata(
-        filename="sample3.pdf",
-        markdown="Sample markdown content 3",
-        summary=""
+        filename="sample3.pdf", markdown="Sample markdown content 3", summary=""
     )
 
     request = TranscriptionRequest(
@@ -36,15 +31,14 @@ def test_transcribe_api():
         speaker_2_name="Guest",
         voice_mapping={
             "speaker-1": "iP95p4xoKVk53GoZ742B",  # Example voice ID
-            "speaker-2": "9BWtsMINqrJLrRacOk9x"   # Example voice ID
+            "speaker-2": "9BWtsMINqrJLrRacOk9x",  # Example voice ID
         },
         guide="Sample focus instructions",  # Optional
-        
         # TranscriptionRequest specific fields
         pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
-        job_id="test-job-123"
+        job_id="test-job-123",
     )
-    
+
     # Send POST request
     response = requests.post(TRANSCRIBE_URL, json=request.model_dump())
 
@@ -64,9 +58,9 @@ def test_transcribe_api():
 
     # Poll the job status until completion or timeout
     MAX_WAIT_TIME = 600  # 10 minutes timeout
-    POLL_INTERVAL = 10    # Check every 5 seconds
+    POLL_INTERVAL = 10  # Check every 5 seconds
     start_time = time.time()
-    
+
     print("\nWaiting for job to complete...")
     while time.time() - start_time < MAX_WAIT_TIME:
         try:
@@ -76,19 +70,20 @@ def test_transcribe_api():
                 status = status_data.get("status")
                 message = status_data.get("message", "No message")
                 print(f"Status: {status} - {message}")
-                
+
                 if status == "COMPLETED":
                     print("\nJob completed successfully!")
                     return
                 elif status == "FAILED":
                     assert False, f"Job failed: {message}"
-                
+
             time.sleep(POLL_INTERVAL)
         except Exception as e:
             print(f"Error checking status: {e}")
             time.sleep(POLL_INTERVAL)
-    
+
     assert False, f"Job did not complete within {MAX_WAIT_TIME} seconds"
+
 
 if __name__ == "__main__":
     test_transcribe_api()

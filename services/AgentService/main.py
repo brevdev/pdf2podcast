@@ -11,15 +11,14 @@ from shared.storage import StorageManager
 from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
-# from flexagent.engine import Value
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Union, Any
+from typing import List, Dict, Any
 import json
 import os
 import logging
 import time
 from prompts import PodcastPrompts
-from langchain_core.messages import BaseMessage, AIMessage
+from langchain_core.messages import AIMessage
 import asyncio
 
 
@@ -82,6 +81,7 @@ class PromptTracker:
             f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
         )
 
+
 async def summarize_pdf(
     pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker
 ) -> AIMessage:
@@ -112,7 +112,7 @@ async def summarize_pdfs(
     job_manager.update_status(
         job_id, JobStatus.PROCESSING, f"Summarizing {len(pdfs)} PDFs"
     )
-    
+
     summaries: List[AIMessage] = await asyncio.gather(
         *[summarize_pdf(pdf, llm_manager, prompt_tracker) for pdf in pdfs]
     )
@@ -123,6 +123,7 @@ async def summarize_pdfs(
         logger.info(f"Successfully summarized {pdf.filename}")
 
     return pdfs
+
 
 def generate_raw_outline(
     summarized_pdfs: List[PDFMetadata],
@@ -218,9 +219,7 @@ async def process_segment(
                 text_content.append(pdf.markdown)
 
     # Choose template based on whether we have references
-    template_name = (
-        "prompt_with_references" if text_content else "prompt_no_references"
-    )
+    template_name = "prompt_with_references" if text_content else "prompt_no_references"
     template = PodcastPrompts.get_template(template_name)
 
     # Prepare prompt parameters
@@ -246,10 +245,11 @@ async def process_segment(
         f"segment_transcript_{idx}",
         prompt,
         llm_manager.model_configs["iteration"].name,
-        response.content, 
+        response.content,
     )
 
     return f"segment_transcript_{idx}", response.content
+
 
 async def process_segments(
     outline: PodcastOutline,
@@ -267,7 +267,7 @@ async def process_segments(
             JobStatus.PROCESSING,
             f"Processing segment {idx + 1}/{len(outline.segments)}: {segment.section}",
         )
-        
+
         task = process_segment(
             segment,
             idx,
@@ -279,7 +279,7 @@ async def process_segments(
 
     # Process all segments in parallel
     results = await asyncio.gather(*segment_tasks)
-    
+
     # Convert results to dictionary
     return dict(results)
 
@@ -327,10 +327,8 @@ async def generate_dialogue_segment(
         dialogue_response.content,
     )
 
-    return {
-        "section": segment.section,
-        "dialogue": dialogue_response.content
-    }
+    return {"section": segment.section, "dialogue": dialogue_response.content}
+
 
 async def generate_dialogue(
     segments: Dict[str, str],
@@ -342,7 +340,7 @@ async def generate_dialogue(
 ) -> List[Dict[str, str]]:
     """Generate dialogue for each segment"""
     job_manager.update_status(job_id, JobStatus.PROCESSING, "Generating dialogue")
-    
+
     # Create tasks for generating dialogue for each segment
     dialogue_tasks = []
     for idx, segment in enumerate(outline.segments):
@@ -376,7 +374,7 @@ async def generate_dialogue(
 
     # Process all dialogues in parallel
     dialogues = await asyncio.gather(*dialogue_tasks)
-    
+
     return list(dialogues)
 
 

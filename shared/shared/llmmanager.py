@@ -6,7 +6,7 @@ from shared.otel import OpenTelemetryInstrumentation
 from opentelemetry.trace.status import StatusCode
 from pathlib import Path
 from dataclasses import dataclass
-from langchain_core.messages import AIMessage    
+from langchain_core.messages import AIMessage
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,13 +32,14 @@ class LLMManager:
     structured outputs, types, and more. It also comes with OTEL telemetry out of the box
     for all queries. It is specifically tailored for singular invocations.
 
-    Configs can be overridden by providing a custom config file. Currently the defaults are 
+    Configs can be overridden by providing a custom config file. Currently the defaults are
     hardcoded to build.nvidia.com endpoints.
 
     Usage:
     >>> llm_manager = LLMManager(api_key, telemetry)
     >>> llm_manager.query_sync("reasoning", [{"role": "user", "content": "Hello, world!"}], "test")
     """
+
     DEFAULT_CONFIGS = {
         "reasoning": {
             "name": "meta/llama-3.1-405b-instruct",
@@ -135,7 +136,9 @@ class LLMManager:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
                 logger.error(f"Query failed: {e}")
-                raise Exception(f"Failed to get response after {retries} attempts") from e
+                raise Exception(
+                    f"Failed to get response after {retries} attempts"
+                ) from e
 
     async def query_async(
         self,
@@ -166,4 +169,6 @@ class LLMManager:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
                 logger.error(f"Query failed: {e}")
-                raise Exception(f"Failed to get response after {retries} attempts") from e
+                raise Exception(
+                    f"Failed to get response after {retries} attempts"
+                ) from e
