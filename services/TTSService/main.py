@@ -64,7 +64,9 @@ class TTSService:
         self.thread_pool = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_REQUESTS)
         self.httpx_client = httpx.Client()
         self.eleven_labs_client = ElevenLabs(
-            api_key=os.getenv("ELEVENLABS_API_KEY"), httpx_client=self.httpx_client, timeout=120
+            api_key=os.getenv("ELEVENLABS_API_KEY"),
+            httpx_client=self.httpx_client,
+            timeout=120,
         )
 
     def __exit__(self):

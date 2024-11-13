@@ -103,7 +103,10 @@ class LLMManager:
         if model_key not in self._llm_cache:
             config = self.model_configs[model_key]
             self._llm_cache[model_key] = ChatNVIDIA(
-                model=config.name, base_url=config.api_base, nvidia_api_key=self.api_key, max_tokens=None
+                model=config.name,
+                base_url=config.api_base,
+                nvidia_api_key=self.api_key,
+                max_tokens=None,
             )
         return self._llm_cache[model_key]
 
