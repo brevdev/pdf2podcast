@@ -27,10 +27,10 @@ class ModelConfig:
 
 class LLMManager:
     """
-    A clean and user friendly wrapper over Langchain's ChatNVIDIA class. We use this class
+    A lightweight and user friendly wrapper over Langchain's ChatNVIDIA class. We use this class
     to abstract away all Langchain functionalities including models, async/sync queries,
     structured outputs, types, and more. It also comes with OTEL telemetry out of the box
-    for all queries.
+    for all queries. It is specifically tailored for singular invocations.
 
     Configs can be overridden by providing a custom config file. Currently the defaults are 
     hardcoded to build.nvidia.com endpoints.
