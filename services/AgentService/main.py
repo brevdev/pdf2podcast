@@ -170,6 +170,7 @@ def generate_raw_outline(
     return raw_outline
 
 
+# TODO: i dont like how this is returning a dict and not an AIMessage
 def generate_structured_outline(
     raw_outline: str,
     llm_manager: LLMManager,
@@ -185,16 +186,16 @@ def generate_structured_outline(
     schema = PodcastOutline.model_json_schema()
     template = PodcastPrompts.get_template("multi_pdf_structured_outline_prompt")
     prompt = template.render(outline=raw_outline, schema=json.dumps(schema, indent=2))
-    outline: AIMessage = llm_manager.query_sync(
+    outline: Dict = llm_manager.query_sync(
         "json",
         [{"role": "user", "content": prompt}],
         "outline",
         json_schema=schema,
     )
     prompt_tracker.track(
-        "outline", prompt, llm_manager.model_configs["json"].name, outline.content
+        "outline", prompt, llm_manager.model_configs["json"].name, outline
     )
-    return outline.content
+    return outline
 
 
 async def process_segment(
@@ -436,6 +437,7 @@ def revise_dialogue(
     return current_dialogue
 
 
+# TODO: i dont like how this is returning a dict and not an AIMessage
 def create_final_conversation(
     dialogue: str,
     request: TranscriptionRequest,
@@ -457,7 +459,7 @@ def create_final_conversation(
         schema=json.dumps(schema, indent=2),
     )
 
-    conversation_json: AIMessage = llm_manager.query_sync(
+    conversation_json: Dict = llm_manager.query_sync(
         "json",
         [{"role": "user", "content": prompt}],
         "create_final_conversation",
@@ -468,10 +470,10 @@ def create_final_conversation(
         "create_final_conversation",
         prompt,
         llm_manager.model_configs["json"].name,
-        conversation_json.content,
+        conversation_json,
     )
 
-    return json.loads(conversation_json.content)
+    return conversation_json
 
 
 async def process_transcription(job_id: str, request: TranscriptionRequest):
@@ -504,8 +506,6 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 prompt_tracker,
                 job_id,
             )
-
-            print(raw_outline)
 
             # Convert to structured format
             outline_json = generate_structured_outline(

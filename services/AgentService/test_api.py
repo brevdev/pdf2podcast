@@ -1,14 +1,14 @@
 import requests
 import json
 import os
+import time
 from shared.shared_types import TranscriptionRequest, PDFMetadata
 
 def test_transcribe_api():
-    # API endpoint
-    AGENT_SERVICE_URL = os.getenv(
-        "AGENT_SERVICE_URL", "http://localhost:8964/transcribe"
-    )
-
+    # API endpoints
+    BASE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
+    TRANSCRIBE_URL = f"{BASE_URL}/transcribe"
+    
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
         filename="sample.pdf",
@@ -31,7 +31,7 @@ def test_transcribe_api():
     request = TranscriptionRequest(
         # TranscriptionParams fields
         name="Test Podcast",
-        duration=30,  # Duration in minutes
+        duration=2,  # Duration in minutes
         speaker_1_name="Host",
         speaker_2_name="Guest",
         voice_mapping={
@@ -46,7 +46,7 @@ def test_transcribe_api():
     )
     
     # Send POST request
-    response = requests.post(AGENT_SERVICE_URL, json=request.model_dump())
+    response = requests.post(TRANSCRIBE_URL, json=request.model_dump())
 
     # Check if the request was successful
     assert (
@@ -57,10 +57,38 @@ def test_transcribe_api():
     try:
         result = response.json()
         assert "job_id" in result, "Response should contain job_id"
+        job_id = result["job_id"]
+        print(f"Job created with ID: {job_id}")
     except json.JSONDecodeError:
         assert False, "Response is not valid JSON"
 
-    print(f"Job created with ID: {result['job_id']}")
+    # Poll the job status until completion or timeout
+    MAX_WAIT_TIME = 600  # 10 minutes timeout
+    POLL_INTERVAL = 10    # Check every 5 seconds
+    start_time = time.time()
+    
+    print("\nWaiting for job to complete...")
+    while time.time() - start_time < MAX_WAIT_TIME:
+        try:
+            status_response = requests.get(f"{BASE_URL}/status/{job_id}")
+            if status_response.status_code == 200:
+                status_data = status_response.json()
+                status = status_data.get("status")
+                message = status_data.get("message", "No message")
+                print(f"Status: {status} - {message}")
+                
+                if status == "COMPLETED":
+                    print("\nJob completed successfully!")
+                    return
+                elif status == "FAILED":
+                    assert False, f"Job failed: {message}"
+                
+            time.sleep(POLL_INTERVAL)
+        except Exception as e:
+            print(f"Error checking status: {e}")
+            time.sleep(POLL_INTERVAL)
+    
+    assert False, f"Job did not complete within {MAX_WAIT_TIME} seconds"
 
 if __name__ == "__main__":
     test_transcribe_api()
