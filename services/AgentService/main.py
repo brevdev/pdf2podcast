@@ -530,10 +530,11 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
             result = create_final_conversation(
                 conversation, request, llm_manager, prompt_tracker, job_id
             )
+            final_conversation = Conversation.model_validate(result)
 
             # Store result
             job_manager.set_result_with_expiration(
-                job_id, json.dumps(result).encode(), ex=120
+                job_id, final_conversation.model_dump_json().encode(), ex=120
             )
             job_manager.update_status(
                 job_id, JobStatus.COMPLETED, "Transcription completed successfully"
