@@ -12,7 +12,7 @@ from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Coroutine
 import json
 import os
 import logging
@@ -260,7 +260,7 @@ async def process_segments(
 ) -> Dict[str, str]:
     """Process each segment in the outline"""
     # Create tasks for processing each segment
-    segment_tasks = []
+    segment_tasks: List[Coroutine] = []
     for idx, segment in enumerate(outline.segments):
         job_manager.update_status(
             job_id,
