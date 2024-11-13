@@ -457,7 +457,8 @@ def create_final_conversation(
         schema=json.dumps(schema, indent=2),
     )
 
-    conversation_json: Dict = llm_manager.query_sync(
+    # We accumulate response as it comes in then cast
+    conversation_json: str = llm_manager.stream_sync(
         "json",
         [{"role": "user", "content": prompt}],
         "create_final_conversation",
@@ -471,7 +472,7 @@ def create_final_conversation(
         conversation_json,
     )
 
-    return conversation_json
+    return dict(conversation_json)
 
 
 async def process_transcription(job_id: str, request: TranscriptionRequest):

@@ -29,7 +29,7 @@ class LLMManager:
     """
     A lightweight and user friendly wrapper over Langchain's ChatNVIDIA class. We use this class
     to abstract away all Langchain functionalities including models, async/sync queries,
-    structured outputs, types, and more. It also comes with OTEL telemetry out of the box
+    structured outputs, types, streaming and more. It also comes with OTEL telemetry out of the box
     for all queries. It is specifically tailored for singular invocations.
 
     Configs can be overridden by providing a custom config file. Currently the defaults are
@@ -174,4 +174,92 @@ class LLMManager:
                 logger.error(f"Query failed: {e}")
                 raise Exception(
                     f"Failed to get response after {retries} attempts"
+                ) from e
+    
+    def stream_sync(
+        self,
+        model_key: str,
+        messages: List[Dict[str, str]],
+        query_name: str,
+        json_schema: Optional[Dict] = None,
+        retries: int = 5,
+    ) -> str:
+        """
+        Send a synchronous streaming query to the specified model and return accumulated response
+        
+        Returns:
+            str: The complete accumulated response from the model
+        """
+        with self.telemetry.tracer.start_as_current_span(
+            f"agent.stream.{query_name}"
+        ) as span:
+            span.set_attribute("model_key", model_key)
+            span.set_attribute("retries", retries)
+            span.set_attribute("async", False)
+
+            try:
+                llm = self.get_llm(model_key)
+                if json_schema:
+                    llm = llm.with_structured_output(json_schema)
+                llm = llm.with_retry(
+                    stop_after_attempt=retries, wait_exponential_jitter=True
+                )
+                
+                accumulated_content = ""
+                for chunk in llm.stream(messages):
+                    if chunk.content is not None:
+                        accumulated_content += chunk.content
+                
+                return accumulated_content
+                        
+            except Exception as e:
+                span.set_status(StatusCode.ERROR)
+                span.record_exception(e)
+                logger.error(f"Streaming query failed: {e}")
+                raise Exception(
+                    f"Failed to get streaming response after {retries} attempts"
+                ) from e
+
+    async def stream_async(
+        self,
+        model_key: str,
+        messages: List[Dict[str, str]],
+        query_name: str,
+        json_schema: Optional[Dict] = None,
+        retries: int = 5,
+    ) -> str:
+        """
+        Send an asynchronous streaming query to the specified model and return accumulated response
+        
+        Returns:
+            str: The complete accumulated response from the model
+        """
+        with self.telemetry.tracer.start_as_current_span(
+            f"agent.stream.{query_name}"
+        ) as span:
+            span.set_attribute("model_key", model_key)
+            span.set_attribute("retries", retries)
+            span.set_attribute("async", True)
+
+            try:
+                llm = self.get_llm(model_key)
+                if json_schema:
+                    llm = llm.with_structured_output(json_schema)
+                llm = llm.with_retry(
+                    stop_after_attempt=retries, wait_exponential_jitter=True
+                )
+                
+                accumulated_content = ""
+                async for chunk in llm.astream(messages):
+                    if chunk.content is not None:
+                        accumulated_content += chunk.content
+                
+                return accumulated_content
+                        
+            except Exception as e:
+                span.set_status(StatusCode.ERROR)
+                span.record_exception(e)
+                logger.error(f"Async streaming query failed: {e}")
+                raise Exception(
+                    f"Failed to get streaming response after {retries} attempts"
                 ) from e
