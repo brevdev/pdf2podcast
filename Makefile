@@ -72,7 +72,7 @@ model-prod:
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up
 
-# Version bump and release target
+# Version bump (minor) and release target
 version-bump:
 	@echo "Current version: $(VERSION)"
 	@new_version=$$(echo $(VERSION) | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g'); \
@@ -81,6 +81,19 @@ version-bump:
 	echo "$(GREEN)Version bumped to: $$new_version$(NC)"; \
 	git add Makefile; \
 	git commit -m "chore: bump version to $$new_version"; \
+	git tag -a "v$$new_version" -m "Release v$$new_version"; \
+	git push origin main; \
+	git push origin "v$$new_version"
+
+# Version bump (major) and release target
+version-bump-major:
+	@echo "Current version: $(VERSION)"
+	@new_version=$$(echo $(VERSION) | awk -F. '{$$1 = $$1 + 1; $$2 = 0;} 1' | sed 's/ /./g'); \
+	sed -i.bak "s/VERSION := $(VERSION)/VERSION := $$new_version/" Makefile; \
+	rm Makefile.bak; \
+	echo "$(GREEN)Version bumped to: $$new_version$(NC)"; \
+	git add Makefile; \
+	git commit -m "chore: bump major version to $$new_version"; \
 	git tag -a "v$$new_version" -m "Release v$$new_version"; \
 	git push origin main; \
 	git push origin "v$$new_version"
@@ -97,4 +110,4 @@ format:
 
 ruff: lint format
 
-.PHONY: check_env dev clean ruff prod version-bump uv model-prod model-dev
+.PHONY: check_env dev clean ruff prod version-bump version-bump-major uv model-prod model-dev
