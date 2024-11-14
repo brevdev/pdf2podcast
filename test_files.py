@@ -1,7 +1,7 @@
 import requests
 import os
 from datetime import datetime
-import json
+import ujson as json
 
 # Set your job_id here
 JOB_ID = "1730947535"

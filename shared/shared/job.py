@@ -2,7 +2,7 @@ from shared.shared_types import ServiceType
 from shared.otel import OpenTelemetryInstrumentation
 import redis
 import time
-import json
+import ujson as json
 import threading
 
 

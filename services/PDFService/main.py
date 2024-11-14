@@ -10,7 +10,7 @@ import os
 import logging
 import time
 import asyncio
-import json
+import ujson as json
 from typing import Optional, List, Tuple
 from pydantic import BaseModel
 from collections.abc import Coroutine

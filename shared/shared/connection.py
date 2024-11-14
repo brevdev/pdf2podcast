@@ -1,7 +1,7 @@
 from fastapi import WebSocket, WebSocketDisconnect
 from typing import Dict, Set
 import redis
-import json
+import ujson as json
 import logging
 import time
 import asyncio

@@ -1,6 +1,6 @@
 import requests
 import sys
-import json
+import ujson as json
 import time
 from pathlib import Path
 from shared.shared_types import StatusResponse

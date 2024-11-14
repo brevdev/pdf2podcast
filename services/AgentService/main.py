@@ -13,7 +13,7 @@ from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
 from typing import List, Dict, Any, Coroutine
-import json
+import ujson as json
 import os
 import logging
 from shared.prompt_tracker import PromptTracker
@@ -127,7 +127,7 @@ def generate_raw_outline(
         raw_outline.content,
     )
 
-    return raw_outline
+    return raw_outline.content
 
 
 def generate_structured_outline(
@@ -166,9 +166,9 @@ def generate_structured_outline(
         json_schema=schema,
     )
     prompt_tracker.track(
-        "outline", prompt, llm_manager.model_configs["json"].name, outline
+        "outline", prompt, llm_manager.model_configs["json"].name, json.dumps(outline)
     )
-    return outline
+    return PodcastOutline.model_validate(outline)
 
 
 async def process_segment(
@@ -350,16 +350,16 @@ async def generate_dialogue(
     return list(dialogues)
 
 
-def revise_dialogue(
+def combine_dialogues(
     segment_dialogues: List[Dict[str, str]],
-    outline_json: Dict,
+    outline: PodcastOutline,
     llm_manager: LLMManager,
     prompt_tracker: PromptTracker,
     job_id: str,
 ) -> str:
-    """Iteratively revise and combine dialogue segments into a cohesive conversation"""
+    """Iteratively combine dialogue segments into a cohesive conversation"""
     job_manager.update_status(
-        job_id, JobStatus.PROCESSING, "Revising dialogue segments"
+        job_id, JobStatus.PROCESSING, "Combining dialogue segments"
     )
 
     # Start with the first segment's dialogue
@@ -369,7 +369,7 @@ def revise_dialogue(
         current_dialogue,
     )
 
-    # Iteratively revise and combine with subsequent segments
+    # Iteratively combine with subsequent segments
     for idx in range(1, len(segment_dialogues)):
         job_manager.update_status(
             job_id,
@@ -381,28 +381,28 @@ def revise_dialogue(
         prompt_tracker.update_result(f"segment_dialogue_{idx}", next_section)
         current_section = segment_dialogues[idx]["section"]
 
-        template = PodcastPrompts.get_template("revise_dialogue_prompt")
+        template = PodcastPrompts.get_template("combine_dialogues_prompt")
         prompt = template.render(
-            outline=json.dumps(outline_json),
+            outline=outline.model_dump_json(),
             dialogue_transcript=current_dialogue,
             next_section=next_section,
             current_section=current_section,
         )
 
-        revised: AIMessage = llm_manager.query_sync(
+        combined: AIMessage = llm_manager.query_sync(
             "iteration",
             [{"role": "user", "content": prompt}],
-            f"revise_dialogue_{idx}",
+            f"combine_dialogues_{idx}",
         )
 
         prompt_tracker.track(
-            f"revise_dialogue_{idx}",
+            f"combine_dialogues_{idx}",
             prompt,
             llm_manager.model_configs["iteration"].name,
-            revised.content,
+            combined.content,
         )
 
-        current_dialogue = revised.content
+        current_dialogue = combined.content
 
     return current_dialogue
 
@@ -429,7 +429,7 @@ def create_final_conversation(
     )
 
     # We accumulate response as it comes in then cast
-    conversation_json: str = llm_manager.stream_sync(
+    conversation_json: Dict = llm_manager.stream_sync(
         "json",
         [{"role": "user", "content": prompt}],
         "create_final_conversation",
@@ -440,10 +440,10 @@ def create_final_conversation(
         "create_final_conversation",
         prompt,
         llm_manager.model_configs["json"].name,
-        conversation_json,
+        json.dumps(conversation_json),
     )
 
-    return dict(conversation_json)
+    return Conversation.model_validate(conversation_json)
 
 
 async def process_transcription(job_id: str, request: TranscriptionRequest):
@@ -477,33 +477,30 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 job_id,
             )
 
-            # Convert to structured format
-            outline_json: PodcastOutline = generate_structured_outline(
+            # Convert outline to structured format
+            outline: PodcastOutline = generate_structured_outline(
                 raw_outline, request, llm_manager, prompt_tracker, job_id
             )
-            outline = PodcastOutline.model_validate(outline_json)
 
-            # Process segments
+            # Process segments in parallel
             segments = await process_segments(
                 outline, request, llm_manager, prompt_tracker, job_id
             )
 
-            # Generate dialogue
+            # Generate dialogues from segments in parallel
             segment_dialogues = await generate_dialogue(
                 segments, outline, request, llm_manager, prompt_tracker, job_id
             )
 
-            # Combine transcripts
-            conversation = revise_dialogue(
-                segment_dialogues, outline_json, llm_manager, prompt_tracker, job_id
+            # Combine transcripts iteratively
+            combined_dialogues = combine_dialogues(
+                segment_dialogues, outline, llm_manager, prompt_tracker, job_id
             )
 
-            # Create final conversation
-            result: Conversation = create_final_conversation(
-                conversation, request, llm_manager, prompt_tracker, job_id
+            # Create final conversation by formatting as JSON
+            final_conversation: Conversation = create_final_conversation(
+                combined_dialogues, request, llm_manager, prompt_tracker, job_id
             )
-            final_conversation = Conversation.model_validate(result)
-
             # Store result
             job_manager.set_result_with_expiration(
                 job_id, final_conversation.model_dump_json().encode(), ex=120

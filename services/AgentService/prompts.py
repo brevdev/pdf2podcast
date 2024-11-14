@@ -221,7 +221,7 @@ You should keep all analogies, stories, examples, and quotes from the transcript
 *Only return the full dialogue transcript; do not include any other information like time budget or segment names.*
 """
 
-REVISE_DIALOGUE_PROMPT_STR = """You are revising a podcast transcript to make it more engaging while preserving its content and structure. You have access to three key elements:
+COMBINE_DIALOGUES_PROMPT_STR = """You are revising a podcast transcript to make it more engaging while preserving its content and structure. You have access to three key elements:
 
 1. The podcast outline
 <outline>
@@ -296,7 +296,7 @@ PROMPT_TEMPLATES = {
     "prompt_with_references": PROMPT_WITH_REFERENCES_STR,
     "prompt_no_references": PROMPT_NO_REFERENCES_STR,
     "transcript_to_dialogue_prompt": TRANSCRIPT_TO_DIALOGUE_PROMPT_STR,
-    "revise_dialogue_prompt": REVISE_DIALOGUE_PROMPT_STR,
+    "combine_dialogues_prompt": COMBINE_DIALOGUES_PROMPT_STR,
     "podcast_dialogue_prompt": PODCAST_DIALOGUE_PROMPT_STR,
 }
 

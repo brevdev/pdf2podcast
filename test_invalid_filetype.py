@@ -1,7 +1,7 @@
 import os
 import requests
 from requests import Response
-import json
+import ujson as json
 from datetime import datetime
 
 

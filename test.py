@@ -1,6 +1,6 @@
 import requests
 import os
-import json
+import ujson as json
 import time
 from datetime import datetime
 from threading import Thread, Event
@@ -181,7 +181,9 @@ def test_saved_podcasts(base_url: str, job_id: str):
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
 
 
-def test_api(base_url: str, pdf_files: list[str]):  # Modified to accept pdf_files parameter
+def test_api(
+    base_url: str, pdf_files: list[str]
+):  # Modified to accept pdf_files parameter
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
         "speaker-2": "9BWtsMINqrRacOk9x",
@@ -275,13 +277,18 @@ def test_api(base_url: str, pdf_files: list[str]):  # Modified to accept pdf_fil
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description='Process PDF files for audio conversion')
-    parser.add_argument('pdf_files', nargs='+', help='PDF files to process')
-    parser.add_argument('--api-url', default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
-                       help='API service URL (default: from API_SERVICE_URL env var or http://localhost:8002)')
-    
+    parser = argparse.ArgumentParser(
+        description="Process PDF files for audio conversion"
+    )
+    parser.add_argument("pdf_files", nargs="+", help="PDF files to process")
+    parser.add_argument(
+        "--api-url",
+        default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
+        help="API service URL (default: from API_SERVICE_URL env var or http://localhost:8002)",
+    )
+
     args = parser.parse_args()
     print(f"API URL: {args.api_url}")
     print(f"Processing PDF files: {args.pdf_files}")
-    
+
     test_api(args.api_url, args.pdf_files)

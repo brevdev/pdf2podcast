@@ -7,6 +7,7 @@ from .shared_types import ProcessingStep, PromptTracker as PromptTrackerModel
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
 

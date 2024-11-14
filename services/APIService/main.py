@@ -27,7 +27,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 import redis
 import requests
-import json
+import ujson as json
 import os
 import logging
 import time

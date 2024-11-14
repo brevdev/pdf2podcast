@@ -26,7 +26,8 @@ RUN pip install --no-cache-dir \
     opentelemetry-instrumentation-redis \
     opentelemetry-exporter-otlp-proto-grpc \
     opentelemetry-instrumentation-httpx \
-    opentelemetry-instrumentation-urllib3
+    opentelemetry-instrumentation-urllib3 \
+    ujson
 
 # Copy shared package first
 COPY shared /shared

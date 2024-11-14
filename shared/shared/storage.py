@@ -1,5 +1,5 @@
 import io
-import json
+import ujson as json
 import base64
 from minio import Minio
 from minio.error import S3Error

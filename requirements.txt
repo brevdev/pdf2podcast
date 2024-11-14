@@ -10,6 +10,7 @@ minio
 httpx
 jinja2
 ruff
+ujson
 
 # Service-specific dependencies
 elevenlabs
