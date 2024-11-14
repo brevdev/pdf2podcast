@@ -247,11 +247,6 @@ Your task is to:
 - Break long monologues into natural back-and-forth dialogue
 - Limit each speaker's turn to maximum 3 sentences
 - Keep the conversation flowing naturally between topics
-- Convert all numbers and symbols to spoken form:
-  * Numbers should be spelled out (e.g., "one thousand" instead of "1000")
-  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "one thousand dollars" instead of "$1000")
-  * Mathematical symbols should be spoken (e.g., "equals" instead of "=", "plus" instead of "+")
-  * Percentages should be spoken as "percent" (e.g., "fifty percent" instead of "50%")
 
 Key guidelines:
 - Avoid explicit transition phrases like "Welcome back" or "Now let's discuss"
@@ -284,6 +279,13 @@ You absolutely must, without exception:
 - Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
 - Ensure all apostrophes, quotes, and special characters are properly formatted
 - Do not escape Unicode characters in the output
+
+You absolutely must, without exception:
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one thousand" instead of "1000")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "one thousand dollars" instead of "$1000")
+  * Mathematical symbols should be spoken (e.g., "equals" instead of "=", "plus" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "fifty percent" instead of "50%")
 
 Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 

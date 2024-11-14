@@ -171,14 +171,13 @@ def generate_raw_outline(
     return raw_outline
 
 
-# TODO: i dont like how this is returning a dict and not an AIMessage
 def generate_structured_outline(
     raw_outline: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
     prompt_tracker: PromptTracker,
     job_id: str,
-) -> Dict:
+) -> PodcastOutline:
     """Convert raw outline to structured format"""
     job_manager.update_status(
         job_id,
@@ -449,14 +448,13 @@ def revise_dialogue(
     return current_dialogue
 
 
-# TODO: i dont like how this is returning a dict and not an AIMessage
 def create_final_conversation(
     dialogue: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
     prompt_tracker: PromptTracker,
     job_id: str,
-) -> Dict:
+) -> Conversation:
     """Convert the dialogue into structured Conversation format"""
     job_manager.update_status(
         job_id, JobStatus.PROCESSING, "Formatting final conversation"
@@ -521,7 +519,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
             )
 
             # Convert to structured format
-            outline_json = generate_structured_outline(
+            outline_json: PodcastOutline = generate_structured_outline(
                 raw_outline, request, llm_manager, prompt_tracker, job_id
             )
             outline = PodcastOutline.model_validate(outline_json)
@@ -542,7 +540,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
             )
 
             # Create final conversation
-            result = create_final_conversation(
+            result: Conversation = create_final_conversation(
                 conversation, request, llm_manager, prompt_tracker, job_id
             )
             final_conversation = Conversation.model_validate(result)
