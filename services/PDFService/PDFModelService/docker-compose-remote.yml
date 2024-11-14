@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   pdf-api:
     image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:${VERSION}
