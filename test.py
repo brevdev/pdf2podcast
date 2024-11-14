@@ -186,7 +186,7 @@ def test_api(
 ):  # Modified to accept pdf_files parameter
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
-        "speaker-2": "9BWtsMINqrRacOk9x",
+        "speaker-2": "9BWtsMINqrJLrRacOk9x",
     }
 
     process_url = f"{base_url}/process_pdf"

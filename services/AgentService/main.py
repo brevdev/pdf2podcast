@@ -374,7 +374,7 @@ def combine_dialogues(
         job_manager.update_status(
             job_id,
             JobStatus.PROCESSING,
-            f"Revising segment {idx + 1}/{len(segment_dialogues)}",
+            f"Combining segment {idx + 1}/{len(segment_dialogues)} with existing dialogue",
         )
 
         next_section = segment_dialogues[idx]["dialogue"]
