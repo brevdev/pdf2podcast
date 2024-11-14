@@ -7,6 +7,7 @@ from threading import Thread, Event
 import websockets
 import asyncio
 from urllib.parse import urljoin
+import argparse
 
 
 class StatusMonitor:
@@ -180,10 +181,10 @@ def test_saved_podcasts(base_url: str, job_id: str):
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
 
 
-def test_api(base_url: str):
+def test_api(base_url: str, pdf_files: list[str]):  # Modified to accept pdf_files parameter
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
-        "speaker-2": "9BWtsMINqrJLrRacOk9x",
+        "speaker-2": "9BWtsMINqrRacOk9x",
     }
 
     process_url = f"{base_url}/process_pdf"
@@ -191,17 +192,13 @@ def test_api(base_url: str):
     current_dir = os.path.dirname(os.path.abspath(__file__))
     samples_dir = os.path.join(current_dir, "samples")
 
-    if not os.path.exists(samples_dir):
-        raise FileNotFoundError(f"Samples directory not found at {samples_dir}")
-
-    sample_pdf_paths = [
-        os.path.join(samples_dir, "nvidia-market-report.pdf"),
-        os.path.join(samples_dir, "nvidia-10q.pdf"),
-    ]
-
-    # Ensure all sample PDF files exist
-    for pdf_path in sample_pdf_paths:
-        assert os.path.exists(pdf_path), f"Sample PDF file not found at {pdf_path}"
+    # Modified PDF path handling
+    sample_pdf_paths = []
+    for pdf_file in pdf_files:
+        if os.path.isabs(pdf_file):
+            sample_pdf_paths.append(pdf_file)
+        else:
+            sample_pdf_paths.append(os.path.join(samples_dir, pdf_file))
 
     # Prepare the payload with updated schema
     transcription_params = {
@@ -278,6 +275,13 @@ def test_api(base_url: str):
 
 
 if __name__ == "__main__":
-    base_url = os.getenv("API_SERVICE_URL", "http://localhost:8002")
-    print(f"{base_url=}")
-    test_api(base_url)
+    parser = argparse.ArgumentParser(description='Process PDF files for audio conversion')
+    parser.add_argument('pdf_files', nargs='+', help='PDF files to process')
+    parser.add_argument('--api-url', default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
+                       help='API service URL (default: from API_SERVICE_URL env var or http://localhost:8002)')
+    
+    args = parser.parse_args()
+    print(f"API URL: {args.api_url}")
+    print(f"Processing PDF files: {args.pdf_files}")
+    
+    test_api(args.api_url, args.pdf_files)
