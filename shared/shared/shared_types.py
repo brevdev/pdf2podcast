@@ -95,3 +95,24 @@ class TranscriptionParams(BaseModel):
 class TranscriptionRequest(TranscriptionParams):
     pdf_metadata: List[PDFMetadata]
     job_id: str
+
+
+class SegmentPoint(BaseModel):
+    description: str
+
+
+class SegmentTopic(BaseModel):
+    title: str
+    points: List[SegmentPoint]
+
+
+class PodcastSegment(BaseModel):
+    section: str
+    topics: List[SegmentTopic]
+    duration: int
+    references: List[str]
+
+
+class PodcastOutline(BaseModel):
+    title: str
+    segments: List[PodcastSegment]

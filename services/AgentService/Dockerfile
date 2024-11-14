@@ -20,10 +20,6 @@ RUN pip install fastapi uvicorn pydantic python-dotenv jinja2 redis minio opente
     opentelemetry-instrumentation-httpx \
     opentelemetry-instrumentation-urllib3
 
-# Install flexagent
-COPY services/AgentService/flexagent /app/flexagent
-WORKDIR /app/flexagent/python
-RUN pip install --use-pep517 -e .
 WORKDIR /app
 
 COPY shared /shared

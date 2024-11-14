@@ -1,43 +1,88 @@
 import requests
 import json
 import os
+import time
+from shared.shared_types import TranscriptionRequest, PDFMetadata
 
 
 def test_transcribe_api():
-    # API endpoint
-    AGENT_SERVICE_URL = os.getenv(
-        "AGENT_SERVICE_URL", "http://localhost:8964/transcribe"
+    # API endpoints
+    BASE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
+    TRANSCRIBE_URL = f"{BASE_URL}/transcribe"
+
+    # Create a proper TranscriptionRequest
+    pdf_metadata_1 = PDFMetadata(
+        filename="sample.pdf", markdown="Sample markdown content", summary=""
     )
 
-    # Load markdown content from file
-    with open("sample.md", "r") as file:
-        markdown_content = file.read()
+    pdf_metadata_2 = PDFMetadata(
+        filename="sample2.pdf", markdown="Sample markdown content 2", summary=""
+    )
 
-    # Prepare the payload
-    payload = {
-        "markdown": markdown_content,
-        "duration": 5,
-        "speaker_1_name": "Kate",
-        "speaker_2_name": "Bob",
-        "model": "meta/llama-3.1-405b-instruct",
-        "job_id": "123",
-    }
+    pdf_metadata_3 = PDFMetadata(
+        filename="sample3.pdf", markdown="Sample markdown content 3", summary=""
+    )
+
+    request = TranscriptionRequest(
+        # TranscriptionParams fields
+        name="Test Podcast",
+        duration=2,  # Duration in minutes
+        speaker_1_name="Host",
+        speaker_2_name="Guest",
+        voice_mapping={
+            "speaker-1": "iP95p4xoKVk53GoZ742B",  # Example voice ID
+            "speaker-2": "9BWtsMINqrJLrRacOk9x",  # Example voice ID
+        },
+        guide="Sample focus instructions",  # Optional
+        # TranscriptionRequest specific fields
+        pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
+        job_id="test-job-123",
+    )
 
     # Send POST request
-    response = requests.post(AGENT_SERVICE_URL, json=payload)
+    response = requests.post(TRANSCRIBE_URL, json=request.model_dump())
 
     # Check if the request was successful
     assert (
         response.status_code == 202
-    ), f"Expected status code 200, but got {response.status_code}"
+    ), f"Expected status code 202, but got {response.status_code}. Response: {response.text}"
 
     # Parse the JSON response
     try:
-        transcription = response.json()
+        result = response.json()
+        assert "job_id" in result, "Response should contain job_id"
+        job_id = result["job_id"]
+        print(f"Job created with ID: {job_id}")
     except json.JSONDecodeError:
         assert False, "Response is not valid JSON"
 
-    print(transcription)
+    # Poll the job status until completion or timeout
+    MAX_WAIT_TIME = 600  # 10 minutes timeout
+    POLL_INTERVAL = 10  # Check every 5 seconds
+    start_time = time.time()
+
+    print("\nWaiting for job to complete...")
+    while time.time() - start_time < MAX_WAIT_TIME:
+        try:
+            status_response = requests.get(f"{BASE_URL}/status/{job_id}")
+            if status_response.status_code == 200:
+                status_data = status_response.json()
+                status = status_data.get("status")
+                message = status_data.get("message", "No message")
+                print(f"Status: {status} - {message}")
+
+                if status == "COMPLETED":
+                    print("\nJob completed successfully!")
+                    return
+                elif status == "FAILED":
+                    assert False, f"Job failed: {message}"
+
+            time.sleep(POLL_INTERVAL)
+        except Exception as e:
+            print(f"Error checking status: {e}")
+            time.sleep(POLL_INTERVAL)
+
+    assert False, f"Job did not complete within {MAX_WAIT_TIME} seconds"
 
 
 if __name__ == "__main__":
