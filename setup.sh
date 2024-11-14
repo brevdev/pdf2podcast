@@ -17,7 +17,4 @@ uv pip install -r requirements.txt
 # Install shared package in editable mode
 uv pip install -e shared/
 
-# Install flexagent package in editable mode
-cd services/AgentService/flexagent/python && uv pip install -e . && cd -
-
 echo "UV environment setup complete!"
