@@ -1,10 +1,9 @@
 from celery import Celery
 import os
 from docling.document_converter import DocumentConverter
-from docling_core.types.doc import ImageRefMode
+from docling.datamodel.base_models import ConversionStatus
 import logging
 from typing import List, Dict
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -33,16 +32,17 @@ def convert_pdf_task(self, file_paths: List[str]) -> List[Dict[str, str]]:
         results = []
         conversion_results = converter.convert_all(
             file_paths,
-            raises_on_error=False,  # Continue processing even if some files fail
+            raises_on_error=True,
         )
 
         for result in conversion_results:
             file_path = str(result.input.file)
             try:
-                if result.status == "SUCCESS":
-                    markdown = result.document.export_to_markdown(
-                        image_mode=ImageRefMode.EMBEDDED
-                    )
+                if result.status in {
+                    ConversionStatus.SUCCESS,
+                    ConversionStatus.PARTIAL_SUCCESS,
+                }:
+                    markdown = result.document.export_to_markdown()
                     results.append(
                         {
                             "filename": os.path.basename(file_path),
@@ -51,13 +51,17 @@ def convert_pdf_task(self, file_paths: List[str]) -> List[Dict[str, str]]:
                         }
                     )
                 else:
+                    error_msg = (
+                        "; ".join(str(error) for error in result.errors)
+                        if result.errors
+                        else f"Conversion failed with status: {result.status}"
+                    )
+                    logger.error(f"Failed to convert {file_path}: {error_msg}")
                     results.append(
                         {
                             "filename": os.path.basename(file_path),
                             "status": "failed",
-                            "error": str(result.errors)
-                            if hasattr(result, "errors")
-                            else "Conversion failed",
+                            "error": error_msg,
                         }
                     )
             finally:

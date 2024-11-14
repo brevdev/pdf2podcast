@@ -3,15 +3,14 @@ import sys
 import ujson as json
 import time
 from pathlib import Path
-from shared.shared_types import StatusResponse
 
 
-def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
+def test_pdf_conversion(pdf_paths: list[str], api_url: str = "http://localhost:8003"):
     """
-    Test the PDF conversion endpoint by uploading a PDF file and displaying the markdown result.
+    Test the PDF conversion endpoint by uploading PDF files and displaying the markdown results.
 
     Args:
-        pdf_path: Path to the PDF file to convert
+        pdf_paths: List of paths to the PDF files to convert
         api_url: Base URL of the API service
     """
     # First check if the service is healthy
@@ -23,18 +22,25 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
         print(f"Error checking service health: {e}")
         sys.exit(1)
 
-    # Check if file exists
-    pdf_file = Path(pdf_path)
-    if not pdf_file.exists():
-        print(f"Error: File {pdf_path} does not exist")
-        sys.exit(1)
+    # Check if files exist
+    pdf_files = []
+    for pdf_path in pdf_paths:
+        pdf_file = Path(pdf_path)
+        if not pdf_file.exists():
+            print(f"Error: File {pdf_path} does not exist")
+            sys.exit(1)
+        pdf_files.append(pdf_file)
 
-    # Prepare the file for upload
-    files = {"file": (pdf_file.name, open(pdf_file, "rb"), "application/pdf")}
+    # Prepare the files for upload
+    files = [
+        ("files", (pdf_file.name, open(pdf_file, "rb"), "application/pdf"))
+        for pdf_file in pdf_files
+    ]
 
-    try:
-        # Make the conversion request
-        print(f"\nUploading {pdf_file.name} for conversion...")
+    try:  # Make the conversion request
+        print(
+            f"\nUploading {len(files)} files for conversion: {', '.join(f.name for f in pdf_files)}..."
+        )
         response = requests.post(f"{api_url}/convert", files=files)
         response.raise_for_status()
 
@@ -49,25 +55,35 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
             status_response = requests.get(f"{api_url}/status/{task_id}")
 
             try:
-                status_data = StatusResponse.model_validate(status_response.json())
+                status_data = status_response.json()
                 print(
                     f"Status check response: Code={status_response.status_code}, Data={status_data}"
                 )
 
                 if status_response.status_code == 200:
                     # Task completed successfully
-                    result = status_data.result
-                    if result:
-                        print(f"Successfully received markdown result: {result}")
+                    results = status_data.get("result", [])
+                    if results:
+                        # Print each result
+                        for result in results:
+                            if result["status"] == "success":
+                                print(f"Successfully converted {result['filename']}")
+                                print(
+                                    f"Content: {result['content'][:200]}..."
+                                )  # Show first 200 chars
+                            else:
+                                print(
+                                    f"Failed to convert {result['filename']}: {result.get('error', 'Unknown error')}"
+                                )
                         return True
-                    print(f"No result found in response data: {status_data}")
+                    print(f"No results found in response data: {status_data}")
                     return False
                 elif status_response.status_code == 202:
                     # Task still processing
                     print("Task still processing, waiting 2 seconds...")
                     time.sleep(2)
                 else:
-                    error_msg = status_data.error
+                    error_msg = status_data.get("error", "Unknown error")
                     print(f"Error response received: {error_msg}")
                     return False
             except Exception as e:
@@ -80,12 +96,15 @@ def test_pdf_conversion(pdf_path: str, api_url: str = "http://localhost:8003"):
             print(f"Response content: {e.response.text}")
     finally:
         # Ensure the file is closed
-        files["file"][1].close()
+        for file_tuple in files:
+            file_tuple[1][1].close()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) != 2:
-        print("Usage: python test_pdf_api.py <path_to_pdf_file>")
+    if len(sys.argv) < 2:
+        print(
+            "Usage: python test_pdf_api.py <path_to_pdf_file1> [path_to_pdf_file2 ...]"
+        )
         sys.exit(1)
 
-    test_pdf_conversion(sys.argv[1], "http://localhost:8003")
+    test_pdf_conversion(sys.argv[1:], "http://localhost:8003")
