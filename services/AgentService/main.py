@@ -16,7 +16,7 @@ from typing import List, Dict, Any, Coroutine
 import json
 import os
 import logging
-import time
+from shared.prompt_tracker import PromptTracker
 from prompts import PodcastPrompts
 from langchain_core.messages import AIMessage
 import asyncio
@@ -39,47 +39,6 @@ telemetry.initialize(config, app)
 
 job_manager = JobStatusManager(ServiceType.AGENT, telemetry=telemetry)
 storage_manager = StorageManager(telemetry=telemetry)
-
-
-# TODO: Move this to shared
-class PromptTracker:
-    """Track prompts and responses and save them to storage"""
-
-    def __init__(self, job_id: str, storage_manager: StorageManager):
-        self.job_id = job_id
-        self.steps: Dict[str, Dict[str, str]] = {}
-        self.storage_manager = storage_manager
-
-    def track(self, step_name: str, prompt: str, model: str, response: str = None):
-        self.steps[step_name] = {
-            "step_name": step_name,
-            "prompt": prompt,
-            "response": response if response else "",
-            "model": model,
-            "timestamp": time.time(),
-        }
-        if response:
-            self._save()
-        logger.info(f"Tracked step {step_name} for {self.job_id}")
-
-    def update_result(self, step_name: str, response: str):
-        if step_name in self.steps:
-            self.steps[step_name]["response"] = response
-            self._save()
-            logger.info(f"Updated response for step {step_name}")
-        else:
-            logger.warning(f"Step {step_name} not found in prompt tracker")
-
-    def _save(self):
-        self.storage_manager.store_file(
-            self.job_id,
-            json.dumps({"steps": list(self.steps.values())}).encode(),
-            f"{self.job_id}_prompt_tracker.json",
-            "application/json",
-        )
-        logger.info(
-            f"Stored prompt tracker for {self.job_id} in minio. Length: {len(self.steps)}"
-        )
 
 
 async def summarize_pdf(
