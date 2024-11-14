@@ -80,7 +80,7 @@ Convert the following outline into a structured JSON format. The final section s
 Output Requirements:
 1. Each segment must include:
    - section name
-   - duration (in minutes)
+   - duration (in minutes) representing the length of the segment
    - list of references (file paths)
    - list of topics, where each topic has:
      - title
@@ -89,6 +89,12 @@ Output Requirements:
 2. Overall structure must include:
    - podcast title
    - complete list of segments
+
+3. Important notes:
+   - References must be chosen from this list of valid filenames: {{ valid_filenames }}
+   - References should only appear in the segment's "references" array, not as a topic
+   - Duration represents the length of each segment, not its starting timestamp
+   - Each segment's duration should be a positive number
 
 The result must conform to the following JSON schema:
 {{ schema }}
@@ -190,6 +196,7 @@ There are two speakers:
     - Mention the speakers' names occasionally to make the conversation more natural.
     - Ensure the guest's responses are substantiated by the input text, avoiding unsupported claims.
     - Avoid long monologues; break information into interactive exchanges.
+    - Use dialogue tags to express emotions (e.g., "he said excitedly", "she replied thoughtfully") to guide voice synthesis.
     - Strive for authenticity. Include:
         - Moments of genuine curiosity or surprise from the host.
         - Instances where the guest may pause to articulate complex ideas.
@@ -240,6 +247,11 @@ Your task is to:
 - Break long monologues into natural back-and-forth dialogue
 - Limit each speaker's turn to maximum 3 sentences
 - Keep the conversation flowing naturally between topics
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one thousand" instead of "1000")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "one thousand dollars" instead of "$1000")
+  * Mathematical symbols should be spoken (e.g., "equals" instead of "=", "plus" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "fifty percent" instead of "50%")
 
 Key guidelines:
 - Avoid explicit transition phrases like "Welcome back" or "Now let's discuss"
@@ -267,8 +279,11 @@ Your task is to:
 - Preserve all dialogue content without any omissions
 - Map {{ speaker_1_name }}'s lines to "speaker-1"
 - Map {{ speaker_2_name }}'s lines to "speaker-2"
+- Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
+- Ensure all apostrophes, quotes, and special characters are properly formatted
+- Do not escape Unicode characters in the output
 
-Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions."""
+Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 
 PROMPT_TEMPLATES = {
     "summary_prompt": SUMMARY_PROMPT_STR,
