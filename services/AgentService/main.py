@@ -189,10 +189,10 @@ def generate_structured_outline(
     # Force the model to only reference valid filenames
     valid_filenames = [pdf.filename for pdf in request.pdf_metadata]
     schema = PodcastOutline.model_json_schema()
-    for prop in schema["definitions"]["PodcastSegment"]["properties"]["references"][
-        "items"
-    ]:
-        prop["enum"] = valid_filenames
+    schema["$defs"]["PodcastSegment"]["properties"]["references"]["items"] = {
+        "type": "string",
+        "enum": valid_filenames
+    }
 
     schema = PodcastOutline.model_json_schema()
     template = PodcastPrompts.get_template("multi_pdf_structured_outline_prompt")

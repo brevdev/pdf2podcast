@@ -202,7 +202,6 @@ class LLMManager:
 
                 last_chunk = None
                 for chunk in llm.stream(messages):
-                    logger.info(f"Streaming chunk: {chunk}")
                     # AIMessage returns content and JSON returns the dict itself
                     if hasattr(chunk, "content"):
                         last_chunk = chunk.content

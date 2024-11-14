@@ -279,6 +279,8 @@ Your task is to:
 - Preserve all dialogue content without any omissions
 - Map {{ speaker_1_name }}'s lines to "speaker-1"
 - Map {{ speaker_2_name }}'s lines to "speaker-2"
+
+You absolutely must, without exception:
 - Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
 - Ensure all apostrophes, quotes, and special characters are properly formatted
 - Do not escape Unicode characters in the output
