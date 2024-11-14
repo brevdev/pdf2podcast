@@ -1,18 +1,24 @@
+# Env vars
 include .env
 export
 
 # Version for production deployment
 VERSION := 1.13
+
 # Docker registry and project
 REGISTRY := nvcr.io/pfteb4cqjzrs/playground
+
 # List of services to build
 SERVICES := api-service agent-service pdf-service tts-service
+
 # Required environment variables
 REQUIRED_ENV_VARS := ELEVENLABS_API_KEY NIM_KEY MAX_CONCURRENT_REQUESTS
+
 # Colors for terminal output
 RED := \033[0;31m
 GREEN := \033[0;32m
 NC := \033[0m  # No Color
+
 # Explicitly use bash
 SHELL := /bin/bash
 
@@ -42,7 +48,13 @@ dev: check_env
 	fi
 	docker compose down
 	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f docker-compose.yaml --env-file .env up --build
+	docker compose -f docker-compose.yaml --env-file .env up --
+
+# Development target for pdf model service
+model-dev:
+	docker compose -f services/PDFService/PDFModelService/docker-compose.yml down
+	@echo "$(GREEN)Starting development environment...$(NC)"
+	docker compose -f services/PDFService/PDFModelService/docker-compose.yml up --build
 
 # Production target
 prod: check_env
@@ -60,7 +72,7 @@ model-prod:
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up
 
-# Version bump (minor) and release target
+# Version bump and release target
 version-bump:
 	@echo "Current version: $(VERSION)"
 	@new_version=$$(echo $(VERSION) | awk -F. '{$$NF = $$NF + 1;} 1' | sed 's/ /./g'); \
@@ -69,19 +81,6 @@ version-bump:
 	echo "$(GREEN)Version bumped to: $$new_version$(NC)"; \
 	git add Makefile; \
 	git commit -m "chore: bump version to $$new_version"; \
-	git tag -a "v$$new_version" -m "Release v$$new_version"; \
-	git push origin main; \
-	git push origin "v$$new_version"
-
-# Version bump (major) and release target
-version-bump-major:
-	@echo "Current version: $(VERSION)"
-	@new_version=$$(echo $(VERSION) | awk -F. '{$$1 = $$1 + 1; $$2 = 0;} 1' | sed 's/ /./g'); \
-	sed -i.bak "s/VERSION := $(VERSION)/VERSION := $$new_version/" Makefile; \
-	rm Makefile.bak; \
-	echo "$(GREEN)Version bumped to: $$new_version$(NC)"; \
-	git add Makefile; \
-	git commit -m "chore: bump major version to $$new_version"; \
 	git tag -a "v$$new_version" -m "Release v$$new_version"; \
 	git push origin main; \
 	git push origin "v$$new_version"
@@ -98,4 +97,4 @@ format:
 
 ruff: lint format
 
-.PHONY: check_env dev clean ruff prod version-bump version-bump-major uv
+.PHONY: check_env dev clean ruff prod version-bump uv model-prod model-dev

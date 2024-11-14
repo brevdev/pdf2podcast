@@ -2,7 +2,7 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from celery.result import AsyncResult
 import os
 import logging
-from typing import Dict
+from typing import Dict, List
 import uuid
 from fastapi.responses import JSONResponse
 
@@ -21,27 +21,33 @@ def get_celery_task():
 
 
 @app.post("/convert")
-async def convert_pdf(file: UploadFile = File(...)) -> Dict[str, str]:
+async def convert_pdf(files: List[UploadFile] = File(...)) -> Dict[str, str]:
     """
-    Start an asynchronous PDF conversion task
+    Start an asynchronous PDF conversion task for multiple files
     """
-    if file.content_type != "application/pdf":
-        raise HTTPException(status_code=400, detail="File must be a PDF")
-
+    file_paths = []
     try:
-        # Save file with unique name
-        file_id = str(uuid.uuid4())
+        # Save files with unique names
         temp_dir = os.getenv("TEMP_FILE_DIR", "/tmp/pdf_conversions")
         os.makedirs(temp_dir, exist_ok=True)
-        temp_file_path = os.path.join(temp_dir, f"{file_id}.pdf")
 
-        content = await file.read()
-        with open(temp_file_path, "wb") as temp_file:
-            temp_file.write(content)
+        # Save all files
+        for file in files:
+            if file.content_type != "application/pdf":
+                raise HTTPException(
+                    status_code=400, detail=f"File {file.filename} must be a PDF"
+                )
 
-        # Get celery task and start conversion
+            file_id = str(uuid.uuid4())
+            temp_file_path = os.path.join(temp_dir, f"{file_id}.pdf")
+            content = await file.read()
+            with open(temp_file_path, "wb") as temp_file:
+                temp_file.write(content)
+            file_paths.append(temp_file_path)
+
+        # Start batch conversion
         convert_pdf_task = get_celery_task()
-        task = convert_pdf_task.delay(temp_file_path)
+        task = convert_pdf_task.delay(file_paths)
 
         return {
             "task_id": task.id,
@@ -51,9 +57,10 @@ async def convert_pdf(file: UploadFile = File(...)) -> Dict[str, str]:
 
     except Exception as e:
         logger.error(f"Error starting conversion: {str(e)}")
-        # Clean up file if task creation fails
-        if "temp_file_path" in locals() and os.path.exists(temp_file_path):
-            os.unlink(temp_file_path)
+        # Clean up files if task creation fails
+        for path in file_paths:
+            if os.path.exists(path):
+                os.unlink(path)
         raise HTTPException(status_code=500, detail=str(e))
 
 

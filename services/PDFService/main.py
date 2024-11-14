@@ -1,7 +1,6 @@
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
 from shared.shared_types import ServiceType, JobStatus, StatusResponse
 from shared.job import JobStatusManager
-from fastapi.responses import PlainTextResponse
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
 import httpx
@@ -11,9 +10,10 @@ import logging
 import time
 import asyncio
 import ujson as json
-from typing import Optional, List, Tuple
-from pydantic import BaseModel
-from collections.abc import Coroutine
+from typing import Optional, List
+from pydantic import BaseModel, Field
+from enum import Enum
+from datetime import datetime
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -36,70 +36,116 @@ MODEL_API_URL = os.getenv("MODEL_API_URL", "https://pdf-gyrdps568.brevlab.com")
 DEFAULT_TIMEOUT = 600  # seconds
 
 
-class PDFRequest(BaseModel):
-    job_id: str
+class ConversionStatus(str, Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
 
 
-async def convert_pdf_to_markdown(pdf_path: str) -> str:
-    """Convert PDF to Markdown using the external API service"""
-    logger.info(f"Sending PDF to external conversion service: {pdf_path}")
-    with telemetry.tracer.start_as_current_span("pdf.convert_pdf_to_markdown") as span:
-        span.set_attribute("pdf_path", pdf_path)
+class PDFConversionResult(BaseModel):
+    filename: str
+    content: str = ""
+    status: ConversionStatus
+    error: str | None = None
+
+
+class PDFMetadata(BaseModel):
+    filename: str
+    markdown: str = ""
+    summary: str = ""
+    status: ConversionStatus
+    error: str | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
+async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionResult]:
+    """Convert multiple PDFs to Markdown using the external API service"""
+    logger.info(f"Sending {len(pdf_paths)} PDFs to external conversion service")
+    with telemetry.tracer.start_as_current_span("pdf.convert_pdfs_to_markdown") as span:
+        span.set_attribute("num_pdfs", len(pdf_paths))
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
             try:
-                # Initial conversion request
-                with open(pdf_path, "rb") as pdf_file:
-                    files = {"file": ("document.pdf", pdf_file, "application/pdf")}
-                    logger.info(f"Sending PDF to model API: {MODEL_API_URL}")
-                    span.set_attribute("model_api_url", MODEL_API_URL)
-                    response = await client.post(
-                        f"{MODEL_API_URL}/convert", files=files
+                # Send all files in a single request
+                files = []
+                for i, path in enumerate(pdf_paths):
+                    with open(path, "rb") as pdf_file:
+                        files.append(
+                            ("files", (f"doc_{i}.pdf", pdf_file, "application/pdf"))
+                        )
+                    span.set_attribute(f"pdf_path_{i}", path)
+
+                logger.info(f"Sending PDFs to model API: {MODEL_API_URL}")
+                span.set_attribute("model_api_url", MODEL_API_URL)
+                response = await client.post(f"{MODEL_API_URL}/convert", files=files)
+
+                if response.status_code != 200:
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"Model API error: {response.text}",
                     )
 
-                    if response.status_code != 200:
+                task_data = response.json()
+                task_id = task_data["task_id"]
+                span.set_attribute("task_id", task_id)
+
+                # Poll the status endpoint until the task is complete
+                while True:
+                    status_response = await client.get(
+                        f"{MODEL_API_URL}/status/{task_id}"
+                    )
+                    status_data = status_response.json()
+                    logger.debug(
+                        f"Status check response: Code={status_response.status_code}, Data={status_data}"
+                    )
+
+                    if status_response.status_code == 200:
+                        # Task completed successfully
+                        results = status_data.get("result", [])
+                        if results:
+                            # Convert raw results to PDFConversionResult models
+                            conversion_results = []
+                            for result in results:
+                                if result["status"] == "success":
+                                    conversion_results.append(
+                                        PDFConversionResult(
+                                            filename=result.get("filename", "unknown"),
+                                            content=result["content"],
+                                            status=ConversionStatus.SUCCESS,
+                                        )
+                                    )
+                                else:
+                                    conversion_results.append(
+                                        PDFConversionResult(
+                                            filename=result.get("filename", "unknown"),
+                                            error=result.get(
+                                                "error", "Unknown conversion error"
+                                            ),
+                                            status=ConversionStatus.FAILED,
+                                        )
+                                    )
+
+                            logger.info(
+                                f"Successfully received {len(conversion_results)} markdown results"
+                            )
+                            return conversion_results
+
+                        logger.error(
+                            f"No results found in response data: {status_data}"
+                        )
                         raise HTTPException(
-                            status_code=response.status_code,
-                            detail=f"Model API error: {response.text}",
+                            status_code=500,
+                            detail="Server returned success but no results were found",
                         )
-
-                    task_data = response.json()
-                    task_id = task_data["task_id"]
-                    span.set_attribute("task_id", task_id)
-
-                    # Poll the status endpoint until the task is complete
-                    while True:
-                        status_response = await client.get(
-                            f"{MODEL_API_URL}/status/{task_id}"
+                    elif status_response.status_code == 202:
+                        # Task still processing
+                        logger.info("Task still processing, waiting 2 seconds...")
+                        await asyncio.sleep(2)
+                    else:
+                        error_msg = status_data.get("error", "Unknown error")
+                        logger.error(f"Error response received: {error_msg}")
+                        raise HTTPException(
+                            status_code=status_response.status_code,
+                            detail=f"PDF conversion failed: {error_msg}",
                         )
-                        status_data = status_response.json()
-                        logger.info(
-                            f"Status check response: Code={status_response.status_code}, Data={status_data}"
-                        )
-
-                        if status_response.status_code == 200:
-                            # Task completed successfully
-                            result = status_data.get("result")
-                            if result:
-                                logger.info("Successfully received markdown result")
-                                return result
-                            logger.error(
-                                f"No result found in response data: {status_data}"
-                            )
-                            raise HTTPException(
-                                status_code=500,
-                                detail="Server returned success but no result was found",
-                            )
-                        elif status_response.status_code == 202:
-                            # Task still processing
-                            logger.info("Task still processing, waiting 2 seconds...")
-                            await asyncio.sleep(2)
-                        else:
-                            error_msg = status_data.get("error", "Unknown error")
-                            logger.error(f"Error response received: {error_msg}")
-                            raise HTTPException(
-                                status_code=status_response.status_code,
-                                detail=f"PDF conversion failed: {error_msg}",
-                            )
 
             except httpx.TimeoutException:
                 span.set_status(StatusCode.ERROR)
@@ -115,98 +161,57 @@ async def convert_pdf_to_markdown(pdf_path: str) -> str:
                 )
 
 
-async def process_pdf(job_id: str, file_content: bytes):
-    """Background task to process PDF conversion"""
-    with telemetry.tracer.start_as_current_span("pdf.process_pdf") as span:
-        try:
-            job_manager.update_status(
-                job_id, JobStatus.PROCESSING, "Creating temporary file"
-            )
-
-            # Create temporary file
-            with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as temp_file:
-                temp_file.write(file_content)
-                temp_file_path = temp_file.name
-
-            try:
-                job_manager.update_status(
-                    job_id,
-                    JobStatus.PROCESSING,
-                    "Converting PDF to Markdown via external service",
-                )
-
-                # Convert the PDF to markdown using external service
-                markdown_content = await convert_pdf_to_markdown(temp_file_path)
-
-                if not isinstance(markdown_content, str):
-                    markdown_content = str(markdown_content)
-
-                # Store result
-                job_manager.set_result(job_id, markdown_content.encode())
-                job_manager.update_status(
-                    job_id, JobStatus.COMPLETED, "PDF conversion completed successfully"
-                )
-
-            finally:
-                # Clean up the temporary file
-                os.unlink(temp_file_path)
-                logger.info(f"Cleaned up temporary file: {temp_file_path}")
-
-        except Exception as e:
-            logger.error(f"Error processing PDF: {str(e)}")
-            span.set_status(StatusCode.ERROR)
-            span.record_exception(e)
-            job_manager.update_status(
-                job_id, JobStatus.FAILED, f"PDF conversion failed: {str(e)}"
-            )
-            raise
-
-
-async def process_multiple_pdfs(
-    job_id: str, contents: List[bytes], filenames: List[str]
-):
+async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str]):
     """Process multiple PDFs and return metadata for each"""
-    with telemetry.tracer.start_as_current_span("pdf.process_multiple_pdfs") as span:
+    with telemetry.tracer.start_as_current_span("pdf.process_pdfs") as span:
         try:
             job_manager.update_status(
                 job_id, JobStatus.PROCESSING, f"Processing {len(contents)} PDFs"
             )
 
-            # Process all PDFs in parallel
-            tasks: List[Tuple[str, str, Coroutine]] = []
-            for idx, (content, filename) in enumerate(zip(contents, filenames)):
+            # Create temporary files for all PDFs
+            temp_files = []
+            for content in contents:
                 with tempfile.NamedTemporaryFile(
                     delete=False, suffix=".pdf"
                 ) as temp_file:
                     temp_file.write(content)
-                    tasks.append(
-                        (
-                            temp_file.name,
-                            filename,
-                            convert_pdf_to_markdown(temp_file.name),
-                        )
-                    )
+                    temp_files.append(temp_file.name)
 
-            # Wait for all conversions to complete
-            pdf_metadata_list = []
-            for temp_file_path, filename, task in tasks:
-                try:
-                    markdown = await task
-                    pdf_metadata_list.append(
-                        {
-                            "filename": filename,
-                            "markdown": markdown,
-                            "summary": "",  # Empty summary placeholder
-                        }
-                    )
-                finally:
-                    os.unlink(temp_file_path)
+            try:
+                # Convert all PDFs in a single batch
+                results = await convert_pdfs_to_markdown(temp_files)
 
-            # Store result
-            job_manager.set_result(job_id, json.dumps(pdf_metadata_list).encode())
-            job_manager.update_status(
-                job_id, JobStatus.COMPLETED, "All PDFs processed successfully"
-            )
+                # Create metadata list
+                pdf_metadata_list = []
+                for filename, result in zip(filenames, results):
+                    metadata = PDFMetadata(
+                        filename=filename,
+                        markdown=result.content
+                        if result.status == ConversionStatus.SUCCESS
+                        else "",
+                        status=result.status,
+                        error=result.error,
+                    )
+                    pdf_metadata_list.append(metadata)
+
+                # Store result
+                job_manager.set_result(
+                    job_id,
+                    json.dumps([m.model_dump() for m in pdf_metadata_list]).encode(),
+                )
+                job_manager.update_status(
+                    job_id, JobStatus.COMPLETED, "All PDFs processed successfully"
+                )
+
+            finally:
+                # Clean up all temporary files
+                for temp_file in temp_files:
+                    try:
+                        os.unlink(temp_file)
+                        logger.info(f"Cleaned up temporary file: {temp_file}")
+                    except Exception as e:
+                        logger.error(f"Error cleaning up file {temp_file}: {e}")
 
         except Exception as e:
             logger.error(f"Error processing PDFs: {str(e)}")
@@ -249,7 +254,7 @@ async def convert_pdf(
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(process_multiple_pdfs, job_id, contents, filenames)
+        background_tasks.add_task(process_pdfs, job_id, contents, filenames)
 
         return {"job_id": job_id}
 
@@ -267,7 +272,7 @@ async def get_status(job_id: str) -> StatusResponse:  # Add return type annotati
         return StatusResponse(**status_data)
 
 
-@app.get("/output/{job_id}", response_class=PlainTextResponse)
+@app.get("/output/{job_id}")
 async def get_output(job_id: str):
     """Get the converted markdown content"""
     with telemetry.tracer.start_as_current_span("pdf.get_output") as span:
@@ -276,7 +281,10 @@ async def get_output(job_id: str):
         if result is None:
             span.set_status(StatusCode.ERROR, "result not found")
             raise HTTPException(status_code=404, detail="Result not found")
-        return result.decode()  # Decode bytes to string for markdown content
+
+        # Parse the stored JSON back into PDFMetadata objects
+        metadata_list = [PDFMetadata(**item) for item in json.loads(result.decode())]
+        return metadata_list
 
 
 @app.get("/health")
