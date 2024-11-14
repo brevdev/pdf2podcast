@@ -157,9 +157,9 @@ async def test_json_streaming():
         "properties": {
             "title": {"type": "string"},
             "summary": {"type": "string"},
-            "rating": {"type": "integer"}
+            "rating": {"type": "integer"},
         },
-        "required": ["title", "summary", "rating"]
+        "required": ["title", "summary", "rating"],
     }
 
     # Test sync streaming with JSON
@@ -173,7 +173,7 @@ async def test_json_streaming():
             }
         ],
         query_name="test_json_stream_sync",
-        json_schema=schema
+        json_schema=schema,
     )
     print(f"Sync JSON Streaming Response: {response}\n")
 
@@ -188,7 +188,7 @@ async def test_json_streaming():
             }
         ],
         query_name="test_json_stream_async",
-        json_schema=schema
+        json_schema=schema,
     )
     print(f"Async JSON Streaming Response: {response}\n")
 

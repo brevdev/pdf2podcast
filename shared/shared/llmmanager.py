@@ -175,7 +175,7 @@ class LLMManager:
                 raise Exception(
                     f"Failed to get response after {retries} attempts"
                 ) from e
-    
+
     def stream_sync(
         self,
         model_key: str,
@@ -199,18 +199,18 @@ class LLMManager:
                 llm = llm.with_retry(
                     stop_after_attempt=retries, wait_exponential_jitter=True
                 )
-                
+
                 last_chunk = None
                 for chunk in llm.stream(messages):
                     logger.info(f"Streaming chunk: {chunk}")
                     # AIMessage returns content and JSON returns the dict itself
-                    if hasattr(chunk, 'content'):
+                    if hasattr(chunk, "content"):
                         last_chunk = chunk.content
                     else:
                         last_chunk = chunk
 
                 return last_chunk
-                        
+
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
@@ -242,17 +242,17 @@ class LLMManager:
                 llm = llm.with_retry(
                     stop_after_attempt=retries, wait_exponential_jitter=True
                 )
-                
+
                 last_chunk = None
                 async for chunk in llm.astream(messages):
                     # AIMessage returns content and JSON returns the dict itself
-                    if hasattr(chunk, 'content'):
+                    if hasattr(chunk, "content"):
                         last_chunk = chunk.content
                     else:
                         last_chunk = chunk
-                
+
                 return last_chunk
-                        
+
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
