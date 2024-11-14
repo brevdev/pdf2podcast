@@ -191,7 +191,7 @@ def generate_structured_outline(
     schema = PodcastOutline.model_json_schema()
     schema["$defs"]["PodcastSegment"]["properties"]["references"]["items"] = {
         "type": "string",
-        "enum": valid_filenames
+        "enum": valid_filenames,
     }
 
     schema = PodcastOutline.model_json_schema()
