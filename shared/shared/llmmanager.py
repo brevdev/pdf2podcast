@@ -183,13 +183,8 @@ class LLMManager:
         query_name: str,
         json_schema: Optional[Dict] = None,
         retries: int = 5,
-    ) -> str:
-        """
-        Send a synchronous streaming query to the specified model and return accumulated response
-        
-        Returns:
-            str: The complete accumulated response from the model
-        """
+    ) -> Union[str, Dict[str, Any]]:
+        """Send a synchronous streaming query to the specified model"""
         with self.telemetry.tracer.start_as_current_span(
             f"agent.stream.{query_name}"
         ) as span:
@@ -205,12 +200,16 @@ class LLMManager:
                     stop_after_attempt=retries, wait_exponential_jitter=True
                 )
                 
-                accumulated_content = ""
+                last_chunk = None
                 for chunk in llm.stream(messages):
-                    if chunk.content is not None:
-                        accumulated_content += chunk.content
-                
-                return accumulated_content
+                    logger.info(f"Streaming chunk: {chunk}")
+                    # AIMessage returns content and JSON returns the dict itself
+                    if hasattr(chunk, 'content'):
+                        last_chunk = chunk.content
+                    else:
+                        last_chunk = chunk
+
+                return last_chunk
                         
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
@@ -227,13 +226,8 @@ class LLMManager:
         query_name: str,
         json_schema: Optional[Dict] = None,
         retries: int = 5,
-    ) -> str:
-        """
-        Send an asynchronous streaming query to the specified model and return accumulated response
-        
-        Returns:
-            str: The complete accumulated response from the model
-        """
+    ) -> Union[str, Dict[str, Any]]:
+        """Send an asynchronous streaming query to the specified model"""
         with self.telemetry.tracer.start_as_current_span(
             f"agent.stream.{query_name}"
         ) as span:
@@ -249,12 +243,15 @@ class LLMManager:
                     stop_after_attempt=retries, wait_exponential_jitter=True
                 )
                 
-                accumulated_content = ""
+                last_chunk = None
                 async for chunk in llm.astream(messages):
-                    if chunk.content is not None:
-                        accumulated_content += chunk.content
+                    # AIMessage returns content and JSON returns the dict itself
+                    if hasattr(chunk, 'content'):
+                        last_chunk = chunk.content
+                    else:
+                        last_chunk = chunk
                 
-                return accumulated_content
+                return last_chunk
                         
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
