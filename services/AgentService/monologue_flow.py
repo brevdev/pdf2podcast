@@ -1,16 +1,12 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
 from shared.shared_types import (
-    ServiceType,
     JobStatus,
     Conversation,
     PDFMetadata,
     TranscriptionRequest,
 )
-from shared.storage import StorageManager
 from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
-from shared.otel import OpenTelemetryInstrumentation
-from typing import List, Dict, Any
+from typing import List, Dict
 import ujson as json
 import logging
 from shared.prompt_tracker import PromptTracker
@@ -76,14 +72,13 @@ def monologue_generate_raw_outline(
     job_manager.update_status(
         job_id, JobStatus.PROCESSING, "Generating initial outline"
     )
-    
-    # Format documents as a string list for consistency with podcast flow
-    documents = [
-        f"Document: {pdf.filename}\n{pdf.summary}"
-        for pdf in summarized_pdfs
-    ]
 
-    template = FinancialSummaryPrompts.get_template("monologue_multi_doc_synthesis_prompt")
+    # Format documents as a string list for consistency with podcast flow
+    documents = [f"Document: {pdf.filename}\n{pdf.summary}" for pdf in summarized_pdfs]
+
+    template = FinancialSummaryPrompts.get_template(
+        "monologue_multi_doc_synthesis_prompt"
+    )
     prompt = template.render(
         focus_instructions=request.guide if request.guide else None,
         documents="\n\n".join(documents),
@@ -122,8 +117,10 @@ def monologue_generate_monologue(
     prompt = template.render(
         raw_outline=raw_outline,
         documents=request.pdf_metadata,
-        focus=request.guide if request.guide else "key financial metrics and performance indicators",
-        speaker_1_name=request.speaker_1_name
+        focus=request.guide
+        if request.guide
+        else "key financial metrics and performance indicators",
+        speaker_1_name=request.speaker_1_name,
     )
 
     monologue: AIMessage = llm_manager.query_sync(
@@ -160,7 +157,7 @@ def monologue_create_final_conversation(
     prompt = template.render(
         speaker_1_name=request.speaker_1_name,
         text=monologue,
-        schema=json.dumps(schema, indent=2)
+        schema=json.dumps(schema, indent=2),
     )
 
     conversation_json: Dict = llm_manager.query_sync(
@@ -174,7 +171,7 @@ def monologue_create_final_conversation(
         "create_final_conversation",
         prompt,
         llm_manager.model_configs["json"].name,
-        json.dumps(conversation_json)
+        json.dumps(conversation_json),
     )
 
-    return Conversation.model_validate(conversation_json) 
+    return Conversation.model_validate(conversation_json)

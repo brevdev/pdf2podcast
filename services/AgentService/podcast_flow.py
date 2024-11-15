@@ -1,20 +1,14 @@
-from fastapi import FastAPI, BackgroundTasks, HTTPException
 from shared.shared_types import (
-    ServiceType,
     JobStatus,
     Conversation,
     PDFMetadata,
     TranscriptionRequest,
     PodcastOutline,
 )
-from shared.storage import StorageManager
 from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
-from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
-from opentelemetry.trace.status import StatusCode
 from typing import List, Dict, Any, Coroutine
 import ujson as json
-import os
 import logging
 from shared.prompt_tracker import PromptTracker
 from podcast_prompts import PodcastPrompts
@@ -140,7 +134,9 @@ def podcast_generate_structured_outline(
     }
 
     schema = PodcastOutline.model_json_schema()
-    template = PodcastPrompts.get_template("podcast_multi_pdf_structured_outline_prompt")
+    template = PodcastPrompts.get_template(
+        "podcast_multi_pdf_structured_outline_prompt"
+    )
     prompt = template.render(
         outline=raw_outline,
         schema=json.dumps(schema, indent=2),
@@ -163,7 +159,7 @@ async def podcast_process_segment(
     idx: int,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
-    prompt_tracker: PromptTracker
+    prompt_tracker: PromptTracker,
 ) -> tuple[str, str]:
     """Process a single segment"""
     # Get reference content if it exists
@@ -178,7 +174,11 @@ async def podcast_process_segment(
                 text_content.append(pdf.markdown)
 
     # Choose template based on whether we have references
-    template_name = "podcast_prompt_with_references" if text_content else "podcast_prompt_no_references"
+    template_name = (
+        "podcast_prompt_with_references"
+        if text_content
+        else "podcast_prompt_no_references"
+    )
     template = PodcastPrompts.get_template(template_name)
 
     # Prepare prompt parameters

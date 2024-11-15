@@ -77,11 +77,14 @@ class PDFMetadata(BaseModel):
 class TranscriptionParams(BaseModel):
     name: str = Field(..., description="Name of the podcast")
     duration: int = Field(..., description="Duration in minutes")
-    monologue: bool = Field(False, description="If True, creates a single-speaker podcast")
-    speaker_1_name: str = Field(..., description="Name of the speaker (or first speaker if not monologue)")
+    monologue: bool = Field(
+        False, description="If True, creates a single-speaker podcast"
+    )
+    speaker_1_name: str = Field(
+        ..., description="Name of the speaker (or first speaker if not monologue)"
+    )
     speaker_2_name: Optional[str] = Field(
-        None, 
-        description="Name of the second speaker (not required for monologue)"
+        None, description="Name of the second speaker (not required for monologue)"
     )
     voice_mapping: Dict[str, str] = Field(
         ...,
@@ -95,17 +98,21 @@ class TranscriptionParams(BaseModel):
         None, description="Optional guidance for the transcription focus and structure"
     )
 
-    @model_validator(mode='after')
-    def validate_monologue_settings(self) -> 'TranscriptionParams':
+    @model_validator(mode="after")
+    def validate_monologue_settings(self) -> "TranscriptionParams":
         if self.monologue:
             # Check speaker_2_name is not provided
             if self.speaker_2_name is not None:
-                raise ValueError("speaker_2_name should not be provided for monologue podcasts")
-            
+                raise ValueError(
+                    "speaker_2_name should not be provided for monologue podcasts"
+                )
+
             # Check voice_mapping only contains speaker-1
             if "speaker-2" in self.voice_mapping:
-                raise ValueError("voice_mapping should only contain speaker-1 for monologue podcasts")
-            
+                raise ValueError(
+                    "voice_mapping should only contain speaker-1 for monologue podcasts"
+                )
+
             # Check that speaker-1 is present in voice_mapping
             if "speaker-1" not in self.voice_mapping:
                 raise ValueError("voice_mapping must contain speaker-1")
@@ -113,10 +120,12 @@ class TranscriptionParams(BaseModel):
             # For dialogues, ensure both speakers are present
             if not self.speaker_2_name:
                 raise ValueError("speaker_2_name is required for dialogue podcasts")
-            
+
             required_speakers = {"speaker-1", "speaker-2"}
             if not all(speaker in self.voice_mapping for speaker in required_speakers):
-                raise ValueError("voice_mapping must contain both speaker-1 and speaker-2 for dialogue podcasts")
+                raise ValueError(
+                    "voice_mapping must contain both speaker-1 and speaker-2 for dialogue podcasts"
+                )
 
         return self
 

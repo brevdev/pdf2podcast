@@ -170,6 +170,7 @@ TEMPLATES: Dict[str, jinja2.Template] = {
     name: jinja2.Template(template) for name, template in PROMPT_TEMPLATES.items()
 }
 
+
 class FinancialSummaryPrompts:
     def __getattr__(self, name: str) -> str:
         """Dynamically handle prompt requests by name"""

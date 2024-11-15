@@ -3,7 +3,6 @@ from shared.shared_types import (
     ServiceType,
     JobStatus,
     Conversation,
-    PDFMetadata,
     TranscriptionRequest,
     PodcastOutline,
 )
@@ -27,14 +26,10 @@ from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
-from typing import List, Dict, Any, Coroutine
 import ujson as json
 import os
 import logging
 from shared.prompt_tracker import PromptTracker
-from podcast_prompts import PodcastPrompts
-from langchain_core.messages import AIMessage
-import asyncio
 
 
 logging.basicConfig(level=logging.INFO)
@@ -53,6 +48,7 @@ telemetry.initialize(config, app)
 
 job_manager = JobStatusManager(ServiceType.AGENT, telemetry=telemetry)
 storage_manager = StorageManager(telemetry=telemetry)
+
 
 async def process_transcription(job_id: str, request: TranscriptionRequest):
     """Main processing function for transcription requests"""
@@ -74,17 +70,32 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
             if request.monologue:
                 # Summarize PDFs
                 summarized_pdfs = await monologue_summarize_pdfs(
-                    request.pdf_metadata, job_id, llm_manager, prompt_tracker, job_manager, logger
+                    request.pdf_metadata,
+                    job_id,
+                    llm_manager,
+                    prompt_tracker,
+                    job_manager,
+                    logger,
                 )
 
                 # Generate raw outline
                 raw_outline = monologue_generate_raw_outline(
-                    summarized_pdfs, request, llm_manager, prompt_tracker, job_id, job_manager
+                    summarized_pdfs,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
                 )
 
                 # Generate monologue
                 monologue = monologue_generate_monologue(
-                    raw_outline, request, llm_manager, prompt_tracker, job_id, job_manager
+                    raw_outline,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
                 )
 
                 # Create final conversation
@@ -103,7 +114,12 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
             else:
                 # Summarize PDFs
                 summarized_pdfs = await podcast_summarize_pdfs(
-                    request.pdf_metadata, job_id, llm_manager, prompt_tracker, job_manager, logger
+                    request.pdf_metadata,
+                    job_id,
+                    llm_manager,
+                    prompt_tracker,
+                    job_manager,
+                    logger,
                 )
 
                 # Generate initial outline
@@ -119,27 +135,58 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
 
                 # Convert outline to structured format
                 outline: PodcastOutline = podcast_generate_structured_outline(
-                    raw_outline, request, llm_manager, prompt_tracker, job_id, job_manager, logger
+                    raw_outline,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                    logger,
                 )
 
                 # Process segments in parallel
                 segments = await podcast_process_segments(
-                    outline, request, llm_manager, prompt_tracker, job_id, job_manager, logger
+                    outline,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                    logger,
                 )
 
                 # Generate dialogues from segments in parallel
                 segment_dialogues = await podcast_generate_dialogue(
-                    segments, outline, request, llm_manager, prompt_tracker, job_id, job_manager, logger
+                    segments,
+                    outline,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                    logger,
                 )
 
                 # Combine transcripts iteratively
                 combined_dialogues = podcast_combine_dialogues(
-                    segment_dialogues, outline, llm_manager, prompt_tracker, job_id, job_manager, logger
+                    segment_dialogues,
+                    outline,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                    logger,
                 )
 
                 # Create final conversation by formatting as JSON
                 final_conversation: Conversation = podcast_create_final_conversation(
-                    combined_dialogues, request, llm_manager, prompt_tracker, job_id, job_manager, logger
+                    combined_dialogues,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                    logger,
                 )
                 # Store result
                 job_manager.set_result_with_expiration(

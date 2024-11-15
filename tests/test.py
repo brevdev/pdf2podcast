@@ -182,15 +182,11 @@ def test_saved_podcasts(base_url: str, job_id: str):
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
 
 
-def test_api(
-    base_url: str, 
-    pdf_files: List[str], 
-    monologue: bool = False
-):
+def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
     }
-    
+
     if not monologue:
         voice_mapping["speaker-2"] = "9BWtsMINqrJLrRacOk9x"
 
