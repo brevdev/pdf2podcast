@@ -192,10 +192,12 @@ def test_api(
 
     process_url = f"{base_url}/process_pdf"
 
-    current_dir = os.path.dirname(os.path.abspath(__file__))
-    samples_dir = os.path.join(current_dir, "samples")
+    # Update path resolution
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # This gets /tests directory
+    project_root = os.path.dirname(current_dir)  # Go up one level to project root
+    samples_dir = os.path.join(project_root, "samples")
 
-    # Modified PDF path handling
+    # Rest of the path handling remains the same
     sample_pdf_paths = []
     for pdf_file in pdf_files:
         if os.path.isabs(pdf_file):

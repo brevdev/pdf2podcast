@@ -28,7 +28,7 @@ jobs:
     - name: Install test dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install -r requirements-test.txt  # Make sure this file exists with your test dependencies
+        pip install -r requirements.txt  # Make sure this file exists with your test dependencies
 
     - name: Run E2E tests
-      run: python test.py
+      run: python tests/test.py
