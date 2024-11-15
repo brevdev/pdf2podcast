@@ -2,6 +2,9 @@
 include .env
 export
 
+# Detach var for CI
+DETACH ?= 0
+
 # Version for production deployment
 VERSION := 1.16
 
@@ -48,7 +51,11 @@ dev: check_env
 	fi
 	docker compose down
 	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f docker-compose.yaml --env-file .env up --build
+	@if [ "$(DETACH)" = "1" ]; then \
+		docker compose -f docker-compose.yaml --env-file .env up --build -d; \
+	else \
+		docker compose -f docker-compose.yaml --env-file .env up --build; \
+	fi
 
 # Development target for pdf model service
 model-dev:
