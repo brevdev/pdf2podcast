@@ -28,7 +28,10 @@ RUN pip install /shared
 
 # Copy service files
 COPY services/AgentService/main.py ./
-COPY services/AgentService/prompts.py ./
+COPY services/AgentService/podcast_prompts.py ./
+COPY services/AgentService/monologue_prompts.py ./
+COPY services/AgentService/podcast_flow.py ./
+COPY services/AgentService/monologue_flow.py ./
 
 EXPOSE 8964
 

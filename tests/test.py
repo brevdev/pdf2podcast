@@ -183,12 +183,16 @@ def test_saved_podcasts(base_url: str, job_id: str):
 
 
 def test_api(
-    base_url: str, pdf_files: List[str]
-):  # Modified to accept pdf_files parameter
+    base_url: str, 
+    pdf_files: List[str], 
+    monologue: bool = False
+):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
-        "speaker-2": "9BWtsMINqrJLrRacOk9x",
     }
+    
+    if not monologue:
+        voice_mapping["speaker-2"] = "9BWtsMINqrJLrRacOk9x"
 
     process_url = f"{base_url}/process_pdf"
 
@@ -212,10 +216,13 @@ def test_api(
         "name": "ishan-test",
         "duration": 5,
         "speaker_1_name": "Bob",
-        "speaker_2_name": "Kate",
         "voice_mapping": voice_mapping,
         "guide": None,  # Optional guidance for transcription focus
+        "monologue": monologue,  # Add monologue flag
     }
+
+    if not monologue:
+        transcription_params["speaker_2_name"] = "Kate"
 
     # Step 1: Submit the PDF files and get job ID
     print(
@@ -291,9 +298,15 @@ if __name__ == "__main__":
         default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
         help="API service URL (default: from API_SERVICE_URL env var or http://localhost:8002)",
     )
+    parser.add_argument(
+        "--monologue",
+        action="store_true",
+        help="Generate a monologue instead of a dialogue",
+    )
 
     args = parser.parse_args()
     print(f"API URL: {args.api_url}")
     print(f"Processing PDF files: {args.pdf_files}")
+    print(f"Monologue mode: {args.monologue}")
 
-    test_api(args.api_url, args.pdf_files)
+    test_api(args.api_url, args.pdf_files, args.monologue)

@@ -1,7 +1,7 @@
 import jinja2
 from typing import Dict
 
-SUMMARY_PROMPT_STR = """
+PODCAST_SUMMARY_PROMPT_STR = """
 Please provide a comprehensive summary of the following document. Note that this document may contain OCR/PDF conversion artifacts, so please interpret the content, especially numerical data and tables, with appropriate context.
 
 <document>
@@ -35,7 +35,7 @@ Please format the summary using markdown, with appropriate headers, lists, and e
 Note: Focus on extracting and organizing the most essential information while ensuring no critical details are omitted. Maintain the original document's tone and context in your summary.
 """
 
-MULTI_PDF_OUTLINE_PROMPT_STR = """
+PODCAST_MULTI_PDF_OUTLINE_PROMPT_STR = """
 Create a structured podcast outline synthesizing the following document summaries. The podcast should be {{total_duration}} minutes long.
 
 Focus Areas & Key Topics:
@@ -70,7 +70,7 @@ Requirements:
 Ensure the outline creates a cohesive narrative that emphasizes the specified focus areas while maintaining overall context and accuracy.
 """
 
-MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR = """
+PODCAST_MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR = """
 Convert the following outline into a structured JSON format. The final section should be marked as the conclusion segment.
 
 <outline>
@@ -100,7 +100,7 @@ The result must conform to the following JSON schema:
 {{ schema }}
 """
 
-PROMPT_WITH_REFERENCES_STR = """
+PODCAST_PROMPT_WITH_REFERENCES_STR = """
 Create a transcript incorporating details from the provided source material:
 
 Source Text:
@@ -129,7 +129,7 @@ Requirements:
 Ensure thorough coverage of each topic while preserving the accuracy and nuance of the source material.
 """
 
-PROMPT_NO_REFERENCES_STR = """
+PODCAST_PROMPT_NO_REFERENCES_STR = """
 Create a knowledge-based transcript following this outline:
 
 Parameters:
@@ -162,7 +162,7 @@ Parameters:
 Develop a thorough exploration of each topic using available knowledge. Begin with careful brainstorming to map connections between ideas, then build a clear narrative that makes complex concepts accessible while maintaining accuracy and completeness.
 """
 
-TRANSCRIPT_TO_DIALOGUE_PROMPT_STR = """
+PODCAST_TRANSCRIPT_TO_DIALOGUE_PROMPT_STR = """
 Your task is to transform the provided input transcript into an engaging and informative podcast dialogue.
 
 There are two speakers:
@@ -221,7 +221,7 @@ You should keep all analogies, stories, examples, and quotes from the transcript
 *Only return the full dialogue transcript; do not include any other information like time budget or segment names.*
 """
 
-COMBINE_DIALOGUES_PROMPT_STR = """You are revising a podcast transcript to make it more engaging while preserving its content and structure. You have access to three key elements:
+PODCAST_COMBINE_DIALOGUES_PROMPT_STR = """You are revising a podcast transcript to make it more engaging while preserving its content and structure. You have access to three key elements:
 
 1. The podcast outline
 <outline>
@@ -290,13 +290,13 @@ You absolutely must, without exception:
 Please output the JSON following the provided schema, maintaining all conversational details and speaker attributions. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 
 PROMPT_TEMPLATES = {
-    "summary_prompt": SUMMARY_PROMPT_STR,
-    "multi_pdf_outline_prompt": MULTI_PDF_OUTLINE_PROMPT_STR,
-    "multi_pdf_structured_outline_prompt": MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR,
-    "prompt_with_references": PROMPT_WITH_REFERENCES_STR,
-    "prompt_no_references": PROMPT_NO_REFERENCES_STR,
-    "transcript_to_dialogue_prompt": TRANSCRIPT_TO_DIALOGUE_PROMPT_STR,
-    "combine_dialogues_prompt": COMBINE_DIALOGUES_PROMPT_STR,
+    "podcast_summary_prompt": PODCAST_SUMMARY_PROMPT_STR,
+    "podcast_multi_pdf_outline_prompt": PODCAST_MULTI_PDF_OUTLINE_PROMPT_STR,
+    "podcast_multi_pdf_structured_outline_prompt": PODCAST_MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR,
+    "podcast_prompt_with_references": PODCAST_PROMPT_WITH_REFERENCES_STR,
+    "podcast_prompt_no_references": PODCAST_PROMPT_NO_REFERENCES_STR,
+    "podcast_transcript_to_dialogue_prompt": PODCAST_TRANSCRIPT_TO_DIALOGUE_PROMPT_STR,
+    "podcast_combine_dialogues_prompt": PODCAST_COMBINE_DIALOGUES_PROMPT_STR,
     "podcast_dialogue_prompt": PODCAST_DIALOGUE_PROMPT_STR,
 }
 
