@@ -4,6 +4,10 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   e2e-test:
     runs-on: ubuntu-latest
@@ -31,4 +35,4 @@ jobs:
         pip install -r requirements.txt  # Make sure this file exists with your test dependencies
 
     - name: Run E2E tests
-      run: python tests/test.py
+      run: python tests/test.py 
