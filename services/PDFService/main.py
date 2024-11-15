@@ -79,7 +79,9 @@ async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionRe
                     logger.info(f"Sending PDFs to model API: {MODEL_API_URL}")
                     span.set_attribute("model_api_url", MODEL_API_URL)
                     logger.info(f"Sending {len(files)} files to model API")
-                    response = await client.post(f"{MODEL_API_URL}/convert", files=files)
+                    response = await client.post(
+                        f"{MODEL_API_URL}/convert", files=files
+                    )
                 finally:
                     # Clean up file handles after request is complete
                     for handle in file_handles:
@@ -205,10 +207,7 @@ async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str])
 
                 # Store result - convert datetime to ISO format string
                 serialized_metadata = [
-                    {
-                        **m.model_dump(),
-                        'created_at': m.created_at.isoformat()
-                    } 
+                    {**m.model_dump(), "created_at": m.created_at.isoformat()}
                     for m in pdf_metadata_list
                 ]
                 job_manager.set_result(
