@@ -80,7 +80,7 @@ app.add_middleware(
     expose_headers=["Content-Disposition"],
     max_age=3600,
 )
-
+logger.info(f"CORS configured with allowed origins: {allowed_origins}")
 
 @app.websocket("/ws/status/{job_id}")
 async def websocket_endpoint(websocket: WebSocket, job_id: str):

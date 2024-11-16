@@ -175,60 +175,80 @@ async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str])
     """Process multiple PDFs and return metadata for each"""
     with telemetry.tracer.start_as_current_span("pdf.process_pdfs") as span:
         try:
+            logger.info(f"Starting PDF processing for job {job_id} with {len(contents)} files")
             job_manager.update_status(
                 job_id, JobStatus.PROCESSING, f"Processing {len(contents)} PDFs"
             )
-
+            
             # Create temporary files for all PDFs
             temp_files = []
-            for content in contents:
-                with tempfile.NamedTemporaryFile(
-                    delete=False, suffix=".pdf"
-                ) as temp_file:
-                    temp_file.write(content)
-                    temp_files.append(temp_file.name)
-
+            for i, content in enumerate(contents):
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        delete=False, suffix=".pdf"
+                    ) as temp_file:
+                        temp_file.write(content)
+                        temp_files.append(temp_file.name)
+                        logger.debug(f"Created temp file {temp_file.name} for PDF {i+1}/{len(contents)}")
+                except Exception as e:
+                    logger.error(f"Failed to create temporary file for PDF {i+1}: {str(e)}")
+                    raise
+            
             try:
+                logger.info(f"Starting PDF to Markdown conversion for {len(temp_files)} files")
                 # Convert all PDFs in a single batch
                 results = await convert_pdfs_to_markdown(temp_files)
-
+                logger.info(f"Conversion completed, processing {len(results)} results")
+                
                 # Create metadata list
                 pdf_metadata_list = []
                 for filename, result in zip(filenames, results):
-                    metadata = PDFMetadata(
-                        filename=filename,
-                        markdown=result.content
-                        if result.status == ConversionStatus.SUCCESS
-                        else "",
-                        status=result.status,
-                        error=result.error,
-                    )
-                    pdf_metadata_list.append(metadata)
-
+                    try:
+                        metadata = PDFMetadata(
+                            filename=filename,
+                            markdown=result.content
+                            if result.status == ConversionStatus.SUCCESS
+                            else "",
+                            status=result.status,
+                            error=result.error,
+                        )
+                        pdf_metadata_list.append(metadata)
+                        logger.debug(f"Created metadata for {filename}: status={result.status}")
+                    except Exception as e:
+                        logger.error(f"Failed to create metadata for {filename}: {str(e)}")
+                        raise
+                
                 # Store result - convert datetime to ISO format string
+                logger.info("Serializing metadata for storage")
                 serialized_metadata = [
                     {**m.model_dump(), "created_at": m.created_at.isoformat()}
                     for m in pdf_metadata_list
                 ]
+                
                 job_manager.set_result(
                     job_id,
                     json.dumps(serialized_metadata).encode(),
                 )
+                logger.info(f"Successfully stored results for job {job_id}")
+                
                 job_manager.update_status(
                     job_id, JobStatus.COMPLETED, "All PDFs processed successfully"
                 )
-
+                logger.info(f"Job {job_id} marked as completed successfully")
+                
             finally:
                 # Clean up all temporary files
+                logger.info(f"Starting cleanup of {len(temp_files)} temporary files")
                 for temp_file in temp_files:
                     try:
                         os.unlink(temp_file)
                         logger.info(f"Cleaned up temporary file: {temp_file}")
                     except Exception as e:
                         logger.error(f"Error cleaning up file {temp_file}: {e}")
-
+                        
         except Exception as e:
-            logger.error(f"Error processing PDFs: {str(e)}")
+            error_msg = f"Error processing PDFs: {str(e)}"
+            logger.error(error_msg, exc_info=True)  # Include full traceback
             span.set_status(StatusCode.ERROR)
             span.record_exception(e)
             job_manager.update_status(
