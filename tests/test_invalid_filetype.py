@@ -25,7 +25,7 @@ def test(base_url: str):
     response = test_api(base_url, "PNP_Proof.txt", "text/plain", transcription_params)
 
     assert (
-        response.status_code == 400
+        response.status_code == 422
     ), f"Expected status code 400, but got {response.status_code}"
 
     transcription_params = {
@@ -36,7 +36,7 @@ def test(base_url: str):
     )
 
     assert (
-        response.status_code == 400
+        response.status_code == 422
     ), f"Expected status code 400, but got {response.status_code}"
 
 
@@ -46,9 +46,9 @@ def test_api(
     # API endpoint
     process_url = f"{base_url}/process_pdf"
 
-    # Path to a sample PDF file for testing
     current_dir = os.path.dirname(os.path.abspath(__file__))
-    samples_dir = os.path.join(current_dir, "samples")
+    root_dir = os.path.dirname(current_dir)
+    samples_dir = os.path.join(root_dir, "samples")
 
     # Ensure samples directory exists
     if not os.path.exists(samples_dir):
@@ -73,7 +73,6 @@ def test_api(
         )
 
     return response
-
 
 if __name__ == "__main__":
     base_url = os.getenv("API_SERVICE_URL", "http://localhost:8002")

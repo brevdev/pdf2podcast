@@ -1,15 +1,14 @@
 import requests
 import os
 import time
-from typing import Optional, List
-from shared.shared_types import StatusResponse
 import sys
+from typing import Optional, List
 from pathlib import Path
+import ujson as json
 
 PDF_SERVICE_URL = os.getenv("PDF_SERVICE_URL", "http://localhost:8003")
 POLL_INTERVAL = 2  # seconds
 MAX_WAIT_TIME = 3600  # seconds
-
 
 def poll_job_status(job_id: str) -> Optional[dict]:
     """Poll the job status until completion or failure"""
@@ -18,21 +17,19 @@ def poll_job_status(job_id: str) -> Optional[dict]:
     while time.time() - start_time < MAX_WAIT_TIME:
         try:
             response = requests.get(f"{PDF_SERVICE_URL}/status/{job_id}")
-            status_data = StatusResponse.model_validate(response.json())
-            # print(f"Polling status... Response: {status_data}")
-
+            status_data = response.json()
             # Check the job status from the response
-            if status_data.status == "JobStatus.COMPLETED":
+            if status_data['status'] == "JobStatus.COMPLETED":
                 return status_data
-            elif status_data.status == "JobStatus.FAILED":
-                print(f"Job failed: {status_data.message}")
+            elif status_data['status'] == "JobStatus.FAILED":
+                print(f"Job failed: {status_data['message']}")
                 return None
-            elif status_data.status == "JobStatus.PROCESSING":
-                print(f"Job still processing... {status_data.message}")
+            elif status_data['status'] == "JobStatus.PROCESSING":
+                print(f"Job still processing... {status_data['message']}")
                 time.sleep(POLL_INTERVAL)
                 continue
             else:
-                print(f"Unknown status: {status_data.status}")
+                print(f"Unknown status: {status_data['status']}")
                 time.sleep(POLL_INTERVAL)
 
         except requests.RequestException as e:
@@ -42,15 +39,8 @@ def poll_job_status(job_id: str) -> Optional[dict]:
     print("Error: Job timed out")
     return None
 
-
 def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
-    """
-    Test the PDF conversion endpoint by uploading PDF files and displaying the markdown results.
-
-    Args:
-        pdf_paths: List of paths to the PDF files to convert
-    """
-    # Check if files exist
+    """Test the PDF conversion endpoint by uploading PDF files and displaying the markdown results."""
     pdf_files = []
     for pdf_path in pdf_paths:
         pdf_file = Path(pdf_path)
@@ -59,20 +49,16 @@ def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
             return False
         pdf_files.append(pdf_file)
 
-    # Submit the conversion job
     try:
-        # Open all files at once and keep them open until the request is complete
         open_files = []
         files = []
 
         for pdf_file in pdf_files:
             f = open(pdf_file, "rb")
-            open_files.append(f)  # Keep track of open files
+            open_files.append(f)
             files.append(("files", (pdf_file.name, f, "application/pdf")))
 
-        print(
-            f"\nUploading {len(files)} files for conversion: {', '.join(f.name for f in pdf_files)}..."
-        )
+        print(f"\nUploading {len(files)} files for conversion: {', '.join(f.name for f in pdf_files)}...")
         response = requests.post(f"{PDF_SERVICE_URL}/convert", files=files)
 
         if response.status_code != 202:
@@ -88,14 +74,12 @@ def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
         print(f"Job ID: {job_id}")
         print("Starting job polling...")
 
-        # Poll for job completion
         status_data = poll_job_status(job_id)
         if not status_data:
             return False
 
         print(f"Job completed. Status data: {status_data}")
 
-        # Get the output
         outputs = get_job_output(job_id)
         if not outputs:
             print("Failed to get output")
@@ -103,8 +87,6 @@ def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
 
         print("Successfully retrieved output")
 
-        # Validate output content for each PDF
-        print("Validating output content...")
         for output in outputs:
             filename = output.get("filename")
             markdown = output.get("markdown", "")
@@ -126,10 +108,8 @@ def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
         print(f"Error during request: {e}")
         return False
     finally:
-        # Close all opened files
         for f in open_files:
             f.close()
-
 
 def get_job_output(job_id: str) -> Optional[List[dict]]:
     """Get the markdown output for a completed job"""
@@ -138,15 +118,12 @@ def get_job_output(job_id: str) -> Optional[List[dict]]:
         if response.status_code != 200:
             print(f"Error getting output: {response.status_code}")
             if response.status_code == 404:
-                print(
-                    "Job result not found. This might mean the job is still processing."
-                )
+                print("Job result not found. This might mean the job is still processing.")
             return None
         return response.json()
     except requests.RequestException as e:
         print(f"Error getting output: {e}")
         return None
-
 
 def test_convert_pdf_endpoint_invalid_file():
     files = [("files", ("test.txt", b"This is not a PDF file", "text/plain"))]
@@ -164,7 +141,6 @@ def test_convert_pdf_endpoint_invalid_file():
         print(f"Error during request: {e}")
         return False
 
-
 def test_health_endpoint():
     try:
         response = requests.get(f"{PDF_SERVICE_URL}/health")
@@ -175,9 +151,7 @@ def test_health_endpoint():
 
         health_data = response.json()
         if health_data.get("status") != "healthy":
-            print(
-                f"Error: Service unhealthy: {health_data.get('error', 'Unknown error')}"
-            )
+            print(f"Error: Service unhealthy: {health_data.get('error', 'Unknown error')}")
             return False
 
         print("Success: Health check passed!")
@@ -187,11 +161,10 @@ def test_health_endpoint():
         print(f"Error checking health: {e}")
         return False
 
-
 def main():
     """Main entry point for the test script"""
     if len(sys.argv) < 2:
-        print("Usage: python test_api.py <path_to_pdf_file1> [path_to_pdf_file2 ...]")
+        print("Usage: python test_pdf_service.py <path_to_pdf_file1> [path_to_pdf_file2 ...]")
         sys.exit(1)
 
     print("Running PDF Service API tests...")
@@ -209,7 +182,6 @@ def main():
         sys.exit(1)
 
     print("\nAll tests completed successfully!")
-
 
 if __name__ == "__main__":
     main()

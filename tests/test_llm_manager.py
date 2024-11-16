@@ -18,7 +18,6 @@ mock_config = OpenTelemetryConfig(
 )
 mock_telemetry.initialize(mock_config, mock_app)
 
-
 async def test_basic_queries():
     """Test both sync and async basic queries"""
     print("\n=== Testing Basic Queries ===")
@@ -53,7 +52,6 @@ async def test_basic_queries():
     )
     print(f"Async Response: {response}\n")
 
-
 async def test_parallel_processing():
     """Test processing multiple queries in parallel"""
     print("\n=== Testing Parallel Processing ===")
@@ -78,7 +76,6 @@ async def test_parallel_processing():
     for question, response in zip(questions, responses):
         print(f"\nQuestion: {question}")
         print(f"Response: {response}")
-
 
 async def test_json_schema():
     """Test JSON schema structured output"""
@@ -108,7 +105,6 @@ async def test_json_schema():
         json_schema=schema,
     )
     print(f"Structured Response: {response}")
-
 
 async def test_streaming():
     """Test both sync and async streaming"""
@@ -143,7 +139,6 @@ async def test_streaming():
         query_name="test_stream_async",
     )
     print(f"Async Streaming Response: {response}\n")
-
 
 async def test_json_streaming():
     """Test JSON schema structured output with streaming"""
@@ -192,18 +187,17 @@ async def test_json_streaming():
     )
     print(f"Async JSON Streaming Response: {response}\n")
 
-
 async def main_test():
     """Run all tests"""
     try:
-        # # Test basic queries
-        # await test_basic_queries()
+        # Test basic queries
+        await test_basic_queries()
 
-        # # Test parallel processing
-        # await test_parallel_processing()
+        # Test parallel processing
+        await test_parallel_processing()
 
-        # # Test JSON schema
-        # await test_json_schema()
+        # Test JSON schema
+        await test_json_schema()
 
         # Test streaming
         await test_streaming()
@@ -214,9 +208,7 @@ async def main_test():
     except Exception as e:
         print(f"\nError occurred: {str(e)}")
 
-
 if __name__ == "__main__":
-    # Ensure NIM_KEY is set
     if not os.getenv("NIM_KEY"):
         print("Error: NIM_KEY environment variable not set")
     else:

@@ -18,8 +18,14 @@ docling==2.2.0
 celery[redis]
 dill
 requests
-openai
-anthropic
 
 # Development dependencies
 pytest
+opentelemetry-api
+opentelemetry-sdk
+opentelemetry-instrumentation-fastapi
+opentelemetry-instrumentation-requests
+opentelemetry-instrumentation-redis
+opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-instrumentation-httpx
+opentelemetry-instrumentation-urllib3
