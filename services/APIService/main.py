@@ -160,7 +160,7 @@ def process_pdf_task(
                 message = pubsub.get_message()
                 if message and message["type"] == "message":
                     update = StatusUpdate.model_validate_json(message["data"].decode())
-
+                    logger.info(f"DEBUG: Update for Job: {update}")
                     if update.job_id == job_id:
                         logger.info(f"Received update for job {job_id}: {update}")
 
@@ -168,12 +168,13 @@ def process_pdf_task(
                             raise Exception(f"{update.service}: {update.message}")
 
                         if update.status == JobStatus.COMPLETED:
+                            logger.info(f"DEBUG: COMPLETED with status {update.status}")
                             if current_service == ServiceType.PDF:
                                 # Get PDF metadata list
                                 pdf_metadata_list = requests.get(
                                     f"{PDF_SERVICE_URL}/output/{job_id}"
                                 ).json()
-
+                                logger.info(f"DEBUG: PDF metadata list: {pdf_metadata_list}")
                                 # Start Agent Service with PDF metadata
                                 requests.post(
                                     f"{AGENT_SERVICE_URL}/transcribe",
