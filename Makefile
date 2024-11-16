@@ -71,13 +71,21 @@ prod: check_env
 	fi
 	docker compose down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up
+	@if [ "$(DETACH)" = "1" ]; then \
+		VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up -d; \
+	else \
+		VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up; \
+	fi
 
 # Production target for pdf model service
 model-prod:
 	docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up
+	@if [ "$(DETACH)" = "1" ]; then \
+		VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up -d; \
+	else \
+		VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up; \
+	fi
 
 # Version bump (minor) and release target
 version-bump:

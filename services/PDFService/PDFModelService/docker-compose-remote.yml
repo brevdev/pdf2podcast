@@ -2,15 +2,23 @@ services:
   pdf-api:
     image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:${VERSION}
     ports:
-      - "8003:8003"
+      - "8083:8003"
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6380/0
+      - CELERY_RESULT_BACKEND=redis://redis:6380/0
       - REDIS_HOST=redis
-      - REDIS_PORT=6379
+      - REDIS_PORT=6380
       - TEMP_FILE_DIR=/tmp/pdf_conversions
+      - CUDA_VISIBLE_DEVICES=6,7
     volumes:
       - pdf_temp:/tmp/pdf_conversions
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
     depends_on:
       - redis
       - celery-worker
@@ -19,11 +27,19 @@ services:
   celery-worker:
     image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-worker:${VERSION}
     environment:
-      - CELERY_BROKER_URL=redis://redis:6379/0
-      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - CELERY_BROKER_URL=redis://redis:6380/0
+      - CELERY_RESULT_BACKEND=redis://redis:6380/0
       - TEMP_FILE_DIR=/tmp/pdf_conversions
+      - CUDA_VISIBLE_DEVICES=6,7
     volumes:
       - pdf_temp:/tmp/pdf_conversions
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 2
+              capabilities: [gpu]
     depends_on:
       - redis
     restart: unless-stopped
@@ -31,10 +47,10 @@ services:
   redis:
     image: redis:alpine
     ports:
-      - "6379:6379"
+      - "6380:6380"
     volumes:
       - redis_data:/data
-    command: redis-server --appendonly yes
+    command: redis-server --port 6380 --appendonly yes
     restart: unless-stopped
 
 volumes:
