@@ -59,29 +59,33 @@ class StatusMonitor:
                     self.websocket = websocket
                     self.reconnect_delay = 1.0
                     print(f"[{self.get_time()}] Connected to status WebSocket")
-                    
+
                     while not self.stop_event.is_set():
                         try:
                             message = await asyncio.wait_for(
                                 websocket.recv(), timeout=30
                             )
-                            
+
                             # Handle ready check message
                             try:
                                 data = json.loads(message)
                                 if data.get("type") == "ready_check":
-                                    await websocket.send("ready")  # Changed from send_text to send
-                                    print(f"[{self.get_time()}] Sent ready acknowledgment")
+                                    await websocket.send(
+                                        "ready"
+                                    )  # Changed from send_text to send
+                                    print(
+                                        f"[{self.get_time()}] Sent ready acknowledgment"
+                                    )
                                     continue
                             except json.JSONDecodeError:
                                 pass
-                                
+
                             await self._handle_message(message)
                         except asyncio.TimeoutError:
                             try:
                                 pong_waiter = await websocket.ping()
                                 await pong_waiter
-                            except:
+                            except Exception:
                                 break
 
             except websockets.exceptions.ConnectionClosed:

@@ -92,15 +92,17 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         # Accept the WebSocket connection
         await manager.connect(websocket, job_id)
         logger.info(f"Sending ready check to client {job_id}")
-        
+
         # Send a ready check message
         await websocket.send_json({"type": "ready_check"})
-        
+
         # Wait for client acknowledgment with increased timeout
         try:
             response = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
             if response != "ready":
-                logger.warning(f"Client {job_id} sent invalid ready response: {response}")
+                logger.warning(
+                    f"Client {job_id} sent invalid ready response: {response}"
+                )
                 return
             logger.info(f"Client {job_id} acknowledged ready state")
         except asyncio.TimeoutError:
@@ -140,6 +142,7 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         logger.error(f"WebSocket error for job {job_id}: {e}")
     finally:
         manager.disconnect(websocket, job_id)
+
 
 def process_pdf_task(
     job_id: str, files_content: List[bytes], transcription_params: TranscriptionParams
