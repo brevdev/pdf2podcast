@@ -70,7 +70,6 @@ prod: check_env
 		mkdir -p data/minio; \
 	fi
 	docker compose down
-	@docker network inspect app-network >/dev/null 2>&1 || docker network create app-network
 	docker compose -f docker-compose-remote.yaml down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
@@ -81,7 +80,6 @@ prod: check_env
 
 # Production target for pdf model service
 model-prod:
-	@docker network inspect app-network >/dev/null 2>&1 || docker network create app-network
 	docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml down
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \

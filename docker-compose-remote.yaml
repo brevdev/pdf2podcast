@@ -3,6 +3,8 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
+    volumes:
+      - redis_data:/data
     command: redis-server --appendonly no
     networks:
       - app-network
@@ -14,6 +16,8 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
+    volumes:
+      - ./data/minio:/data
     command: minio server /data --console-address ":9001"
     networks:
       - app-network
@@ -91,6 +95,9 @@ services:
       retries: 3
     networks:
       - app-network
+
+volumes:
+  redis_data:
 
 networks:
   app-network:
