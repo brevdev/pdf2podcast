@@ -63,7 +63,7 @@ services:
       - "8003:8003"
     environment:
       - REDIS_URL=redis://redis:6379
-      - MODEL_API_URL=${MODEL_API_URL:-https://pdf-gyrdps568.brevlab.com}
+      - MODEL_API_URL=${MODEL_API_URL:-http://pdf-api:8003}
     depends_on:
       - redis
     networks:
@@ -100,4 +100,4 @@ volumes:
   redis_data:
 networks:
   app-network:
-    driver: bridge
+    external: true

@@ -25,6 +25,8 @@ services:
       - redis
       - celery-worker
     restart: unless-stopped
+    networks:
+      - app-network
 
   celery-worker:
     build:
@@ -47,6 +49,8 @@ services:
     depends_on:
       - redis
     restart: unless-stopped
+    networks:
+      - app-network
 
   redis:
     image: redis:alpine
@@ -56,7 +60,13 @@ services:
       - redis_data:/data
     command: redis-server --port 6380 --appendonly yes
     restart: unless-stopped
+    networks:
+      - app-network
 
 volumes:
   redis_data:
   pdf_temp:
+
+networks:
+  app-network:
+    external: true
