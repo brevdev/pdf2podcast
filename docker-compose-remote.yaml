@@ -61,7 +61,7 @@ services:
       - "8003:8003"
     environment:
       - REDIS_URL=redis://redis:6379
-      - MODEL_API_URL=${MODEL_API_URL:-http://host.docker.internal:7670/v1}
+      - MODEL_API_URL=${MODEL_API_URL:-https://nv-ingest-rest-endpoint-40dqyivbh.brevlab.com/v1}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
