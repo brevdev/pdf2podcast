@@ -3,8 +3,6 @@ services:
     image: redis:latest
     ports:
       - "6379:6379"
-    volumes:
-      - redis_data:/data
     command: redis-server --appendonly no
     networks:
       - app-network
@@ -16,8 +14,6 @@ services:
     environment:
       - MINIO_ROOT_USER=minioadmin
       - MINIO_ROOT_PASSWORD=minioadmin
-    volumes:
-      - ./data/minio:/data
     command: minio server /data --console-address ":9001"
     networks:
       - app-network
@@ -63,7 +59,7 @@ services:
       - "8003:8003"
     environment:
       - REDIS_URL=redis://redis:6379
-      - MODEL_API_URL=${MODEL_API_URL:-http://pdf-api:8003}
+      - MODEL_API_URL=${MODEL_API_URL:-http://nv-ingest-ms-runtime:7670/v1}
     depends_on:
       - redis
     networks:
@@ -96,8 +92,6 @@ services:
     networks:
       - app-network
 
-volumes:
-  redis_data:
 networks:
   app-network:
     external: true
