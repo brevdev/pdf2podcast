@@ -91,8 +91,26 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     try:
         # Accept the WebSocket connection
         await manager.connect(websocket, job_id)
+        logger.info(f"Sending ready check to client {job_id}")
+        
+        # Send a ready check message
+        await websocket.send_json({"type": "ready_check"})
+        
+        # Wait for client acknowledgment with increased timeout
+        try:
+            response = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
+            if response != "ready":
+                logger.warning(f"Client {job_id} sent invalid ready response: {response}")
+                return
+            logger.info(f"Client {job_id} acknowledged ready state")
+        except asyncio.TimeoutError:
+            logger.warning(f"Client {job_id} ready check timeout")
+            return
+        except Exception as e:
+            logger.error(f"Error during ready check for {job_id}: {e}")
+            return
 
-        # Send initial status for all services
+        # Now send initial status for all services
         for service in ServiceType:
             status_data = redis_client.hgetall(f"status:{job_id}:{service}")
             if status_data:
@@ -107,11 +125,13 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         # Keep connection alive and handle client messages
         while True:
             try:
-                # Wait for client messages (ping/pong handled automatically by FastAPI)
                 data = await websocket.receive_text()
                 if data == "ping":
                     await websocket.send_text("pong")
             except WebSocketDisconnect:
+                break
+            except Exception as e:
+                logger.error(f"Error handling client message: {e}")
                 break
 
             await asyncio.sleep(0.1)
@@ -120,7 +140,6 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         logger.error(f"WebSocket error for job {job_id}: {e}")
     finally:
         manager.disconnect(websocket, job_id)
-
 
 def process_pdf_task(
     job_id: str, files_content: List[bytes], transcription_params: TranscriptionParams

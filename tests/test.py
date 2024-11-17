@@ -23,6 +23,7 @@ class StatusMonitor:
         self.websocket = None
         self.reconnect_delay = 1.0
         self.max_reconnect_delay = 30.0
+        self.ready_event = asyncio.Event()
 
     def _get_ws_url(self, base_url):
         """Convert HTTP URL to WebSocket URL"""
@@ -52,40 +53,50 @@ class StatusMonitor:
         loop.run_until_complete(self._monitor_status())
 
     async def _monitor_status(self):
-        """Monitor status updates via WebSocket with automatic reconnection"""
         while not self.stop_event.is_set():
             try:
                 async with websockets.connect(self.ws_url) as websocket:
                     self.websocket = websocket
-                    self.reconnect_delay = 1.0  # Reset delay on successful connection
+                    self.reconnect_delay = 1.0
                     print(f"[{self.get_time()}] Connected to status WebSocket")
-
+                    
                     while not self.stop_event.is_set():
                         try:
                             message = await asyncio.wait_for(
                                 websocket.recv(), timeout=30
                             )
+                            
+                            # Handle ready check message
+                            try:
+                                data = json.loads(message)
+                                if data.get("type") == "ready_check":
+                                    await websocket.send("ready")  # Changed from send_text to send
+                                    print(f"[{self.get_time()}] Sent ready acknowledgment")
+                                    continue
+                            except json.JSONDecodeError:
+                                pass
+                                
                             await self._handle_message(message)
                         except asyncio.TimeoutError:
-                            # Send ping to keep connection alive
                             try:
                                 pong_waiter = await websocket.ping()
                                 await pong_waiter
-                            except:  # noqa
+                            except:
                                 break
 
             except websockets.exceptions.ConnectionClosed:
+                self.ready_event.clear()
                 if not self.stop_event.is_set():
                     print(
                         f"[{self.get_time()}] WebSocket connection closed, reconnecting..."
                     )
 
             except Exception as e:
+                self.ready_event.clear()
                 if not self.stop_event.is_set():
                     print(f"[{self.get_time()}] WebSocket error: {e}, reconnecting...")
 
             if not self.stop_event.is_set():
-                # Exponential backoff for reconnection
                 await asyncio.sleep(self.reconnect_delay)
                 self.reconnect_delay = min(
                     self.reconnect_delay * 1.5, self.max_reconnect_delay
