@@ -59,7 +59,9 @@ class ConnectionManager:
                     data = message["data"].decode("utf-8")
                     try:
                         job_update = json.loads(data)
-                        logger.info(f"Received message for job {job_update.get('job_id')}")
+                        logger.info(
+                            f"Received message for job {job_update.get('job_id')}"
+                        )
                     except json.JSONDecodeError:
                         logger.error("Invalid JSON in Redis message")
                     # Put message in queue for processing regardless of logging logic error
@@ -87,7 +89,9 @@ class ConnectionManager:
                         logger.info(f"Processing message for job {job_id}")
 
                         if job_id and job_id in self.active_connections:
-                            logger.info(f"Broadcasting update for job {job_id} to {len(self.active_connections[job_id])} connections")
+                            logger.info(
+                                f"Broadcasting update for job {job_id} to {len(self.active_connections[job_id])} connections"
+                            )
                             await self.broadcast_to_job(
                                 job_id,
                                 {
