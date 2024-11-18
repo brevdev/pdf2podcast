@@ -28,6 +28,7 @@ from pydantic import ValidationError
 import redis
 import requests
 import ujson as json
+import uuid
 import os
 import logging
 import time
@@ -303,7 +304,7 @@ async def process_pdf(
             raise HTTPException(status_code=400, detail=str(e))
 
         # Create job
-        job_id = str(int(time.time()))
+        job_id = str(uuid.uuid4())
         span.set_attribute("job_id", job_id)
 
         # Read all files
