@@ -29,8 +29,10 @@ class JobStatusManager:
                 "timestamp": time.time(),
             }
             # Encode the update dict as JSON bytes
+            hset_key = f"status:{job_id}:{str(self.service_type)}"
+            span.set_attribute("hset_key", hset_key)
             self.redis.hset(
-                f"status:{job_id}:{self.service_type}",
+                hset_key,
                 mapping={k: str(v).encode() for k, v in update.items()},
             )
             self.redis.publish("status_updates:all", json.dumps(update).encode())
@@ -46,8 +48,10 @@ class JobStatusManager:
                 "timestamp": time.time(),
             }
             # Encode the update dict as JSON bytes
+            hset_key = f"status:{job_id}:{str(self.service_type)}"
+            span.set_attribute("hset_key", hset_key)
             self.redis.hset(
-                f"status:{job_id}:{self.service_type}",
+                hset_key,
                 mapping={k: str(v).encode() for k, v in update.items()},
             )
             self.redis.publish("status_updates:all", json.dumps(update).encode())
@@ -55,26 +59,34 @@ class JobStatusManager:
     def set_result(self, job_id: str, result: bytes):
         with self.telemetry.tracer.start_as_current_span("job.set_result") as span:
             span.set_attribute("job_id", job_id)
-            self.redis.set(f"result:{job_id}:{self.service_type}", result)
+            set_key = f"result:{job_id}:{str(self.service_type)}"
+            span.set_attribute("set_key", set_key)
+            self.redis.set(set_key, result)
 
     def set_result_with_expiration(self, job_id: str, result: bytes, ex: int):
         with self.telemetry.tracer.start_as_current_span(
             "job.set_result_with_expiration"
         ) as span:
             span.set_attribute("job_id", job_id)
-            self.redis.set(f"result:{job_id}:{self.service_type}", result, ex=ex)
+            set_key = f"result:{job_id}:{str(self.service_type)}"
+            span.set_attribute("set_key", set_key)
+            self.redis.set(set_key, result, ex=ex)
 
     def get_result(self, job_id: str):
         with self.telemetry.tracer.start_as_current_span("job.get_result") as span:
             span.set_attribute("job_id", job_id)
-            result = self.redis.get(f"result:{job_id}:{self.service_type}")
+            get_key = f"result:{job_id}:{str(self.service_type)}"
+            span.set_attribute("get_key", get_key)
+            result = self.redis.get(get_key)
             return result if result else None
 
     def get_status(self, job_id: str):
         with self.telemetry.tracer.start_as_current_span("job.get_status") as span:
             span.set_attribute("job_id", job_id)
             # Get raw bytes and decode manually
-            status = self.redis.hgetall(f"status:{job_id}:{self.service_type}")
+            hget_key = f"status:{job_id}:{str(self.service_type)}"
+            span.set_attribute("hget_key", hget_key)
+            status = self.redis.hgetall(hget_key)
             if not status:
                 raise ValueError("Job not found")
             # Decode bytes to strings for each field
@@ -83,7 +95,7 @@ class JobStatusManager:
     def cleanup_old_jobs(self, max_age=3600):
         current_time = time.time()
         removed = 0
-        pattern = f"status:*:{self.service_type}"
+        pattern = f"status:*:{str(self.service_type)}"
         for key in self.redis.scan_iter(match=pattern):
             status = self.redis.hgetall(key)
             try:
