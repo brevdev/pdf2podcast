@@ -60,7 +60,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 config_path=os.getenv("MODEL_CONFIG_PATH"),
             )
             span.set_attribute("model_config_path", os.getenv("MODEL_CONFIG_PATH"))
-            prompt_tracker = PromptTracker(job_id, storage_manager)
+            prompt_tracker = PromptTracker(job_id, request.userId, storage_manager)
 
             # Initialize processing
             job_manager.update_status(

@@ -11,8 +11,9 @@ logger = logging.getLogger(__name__)
 class PromptTracker:
     """Track prompts and responses and save them to storage"""
 
-    def __init__(self, job_id: str, storage_manager: StorageManager):
+    def __init__(self, job_id: str, user_id: str, storage_manager: StorageManager):
         self.job_id = job_id
+        self.user_id = user_id
         self.steps: Dict[str, ProcessingStep] = {}
         self.storage_manager = storage_manager
 
@@ -42,6 +43,7 @@ class PromptTracker:
         """Save the current state to storage"""
         tracker = PromptTrackerModel(steps=list(self.steps.values()))
         self.storage_manager.store_file(
+            self.user_id,
             self.job_id,
             tracker.model_dump_json().encode(),
             f"{self.job_id}_prompt_tracker.json",

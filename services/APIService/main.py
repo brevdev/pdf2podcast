@@ -162,6 +162,7 @@ def process_pdf_task(
             # Store all original PDFs
             for idx, content in enumerate(files_content):
                 storage_manager.store_file(
+                    transcription_params.userId,
                     job_id,
                     content,
                     f"{job_id}_{idx}.pdf",
@@ -221,6 +222,7 @@ def process_pdf_task(
 
                                 # Store script result in minio
                                 storage_manager.store_file(
+                                    transcription_params.userId,
                                     job_id,
                                     json.dumps(agent_result).encode(),
                                     f"{job_id}_agent_result.json",

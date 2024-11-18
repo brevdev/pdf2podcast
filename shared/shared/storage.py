@@ -67,8 +67,13 @@ class StorageManager:
             logger.error(f"Failed to ensure bucket exists: {e}")
             raise
 
+    def _get_object_path(self, user_id: str, job_id: str, filename: str) -> str:
+        """Generate the full object path including user isolation"""
+        return f"{user_id}/{job_id}/{filename}"
+
     def store_file(
         self,
+        user_id: str,
         job_id: str,
         content: bytes,
         filename: str,
@@ -77,26 +82,23 @@ class StorageManager:
     ) -> None:
         """Store any file type in MinIO with metadata"""
         with self.telemetry.tracer.start_as_current_span("store_file") as span:
+            span.set_attribute("user_id", user_id)
             span.set_attribute("job_id", job_id)
             span.set_attribute("filename", filename)
-            span.set_attribute("content_type", content_type)
             try:
+                object_name = self._get_object_path(user_id, job_id, filename)
                 self.client.put_object(
                     self.bucket_name,
-                    f"{job_id}/{filename}",
+                    object_name,
                     io.BytesIO(content),
                     length=len(content),
                     content_type=content_type,
-                    metadata=metadata.model_dump()
-                    if hasattr(metadata, "model_dump")
-                    else metadata,
+                    metadata=metadata.model_dump() if hasattr(metadata, "model_dump") else metadata,
                 )
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(
-                    f"Failed to store file {filename} for job {job_id}: {str(e)}"
-                )
+                logger.error(f"Failed to store file {filename} for user {user_id}, job {job_id}: {str(e)}")
                 raise
 
     def store_audio(

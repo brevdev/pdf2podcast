@@ -75,6 +75,7 @@ class PDFMetadata(BaseModel):
 
 
 class TranscriptionParams(BaseModel):
+    userId: str = Field(..., description="KAS User ID")
     name: str = Field(..., description="Name of the podcast")
     duration: int = Field(..., description="Duration in minutes")
     monologue: bool = Field(
