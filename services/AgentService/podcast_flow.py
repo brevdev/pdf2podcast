@@ -61,7 +61,7 @@ async def podcast_summarize_pdfs(
     return pdfs
 
 
-def podcast_generate_raw_outline(
+async def podcast_generate_raw_outline(
     summarized_pdfs: List[PDFMetadata],
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -93,7 +93,7 @@ def podcast_generate_raw_outline(
         focus_instructions=request.guide if request.guide else None,
         documents="\n\n".join(documents),
     )
-    raw_outline: AIMessage = llm_manager.query_sync(
+    raw_outline: AIMessage = await llm_manager.query_async(
         "reasoning",
         [{"role": "user", "content": prompt}],
         "raw_outline",
@@ -109,7 +109,7 @@ def podcast_generate_raw_outline(
     return raw_outline.content
 
 
-def podcast_generate_structured_outline(
+async def podcast_generate_structured_outline(
     raw_outline: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -142,7 +142,7 @@ def podcast_generate_structured_outline(
         schema=json.dumps(schema, indent=2),
         valid_filenames=[pdf.filename for pdf in request.pdf_metadata],
     )
-    outline: Dict = llm_manager.query_sync(
+    outline: Dict = await llm_manager.query_async(
         "json",
         [{"role": "user", "content": prompt}],
         "outline",
@@ -341,7 +341,7 @@ async def podcast_generate_dialogue(
     return list(dialogues)
 
 
-def podcast_combine_dialogues(
+async def podcast_combine_dialogues(
     segment_dialogues: List[Dict[str, str]],
     outline: PodcastOutline,
     llm_manager: LLMManager,
@@ -382,7 +382,7 @@ def podcast_combine_dialogues(
             current_section=current_section,
         )
 
-        combined: AIMessage = llm_manager.query_sync(
+        combined: AIMessage = await llm_manager.query_async(
             "iteration",
             [{"role": "user", "content": prompt}],
             f"combine_dialogues_{idx}",
@@ -400,7 +400,7 @@ def podcast_combine_dialogues(
     return current_dialogue
 
 
-def podcast_create_final_conversation(
+async def podcast_create_final_conversation(
     dialogue: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -424,7 +424,7 @@ def podcast_create_final_conversation(
     )
 
     # We accumulate response as it comes in then cast
-    conversation_json: Dict = llm_manager.stream_sync(
+    conversation_json: Dict = await llm_manager.stream_async(
         "json",
         [{"role": "user", "content": prompt}],
         "create_final_conversation",
