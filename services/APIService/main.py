@@ -399,11 +399,17 @@ async def cleanup_jobs():
 
 
 @app.get("/saved_podcasts", response_model=Dict[str, List[SavedPodcast]])
-async def get_saved_podcasts(userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcasts(userId: str = Query(..., description="KAS User ID", min_length=1)):
     """Get a list of all saved podcasts from storage with their audio data"""
     try:
         with telemetry.tracer.start_as_current_span("api.saved_podcasts") as span:
-            # Pass userId to filter results
+            if not userId.strip():  # Check for whitespace-only strings
+                raise HTTPException(
+                    status_code=400,
+                    detail="userId cannot be empty"
+                )
+            
+            # Pass userId to filter results - storage manager handles the filtering
             saved_files = storage_manager.list_files_metadata(user_id=userId)
             span.set_attribute("num_files", len(saved_files))
             span.set_attribute("user_id", userId)

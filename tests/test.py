@@ -10,6 +10,8 @@ from urllib.parse import urljoin
 import argparse
 from typing import List
 
+# Add global TEST_USER_ID
+TEST_USER_ID = "test-userid"
 
 class StatusMonitor:
     def __init__(self, base_url, job_id):
@@ -62,20 +64,14 @@ class StatusMonitor:
 
                     while not self.stop_event.is_set():
                         try:
-                            message = await asyncio.wait_for(
-                                websocket.recv(), timeout=30
-                            )
+                            message = await asyncio.wait_for(websocket.recv(), timeout=30)
 
                             # Handle ready check message
                             try:
                                 data = json.loads(message)
                                 if data.get("type") == "ready_check":
-                                    await websocket.send(
-                                        "ready"
-                                    )  # Changed from send_text to send
-                                    print(
-                                        f"[{self.get_time()}] Sent ready acknowledgment"
-                                    )
+                                    await websocket.send("ready")
+                                    print(f"[{self.get_time()}] Sent ready acknowledgment")
                                     continue
                             except json.JSONDecodeError:
                                 pass
@@ -91,9 +87,7 @@ class StatusMonitor:
             except websockets.exceptions.ConnectionClosed:
                 self.ready_event.clear()
                 if not self.stop_event.is_set():
-                    print(
-                        f"[{self.get_time()}] WebSocket connection closed, reconnecting..."
-                    )
+                    print(f"[{self.get_time()}] WebSocket connection closed, reconnecting...")
 
             except Exception as e:
                 self.ready_event.clear()
@@ -102,9 +96,7 @@ class StatusMonitor:
 
             if not self.stop_event.is_set():
                 await asyncio.sleep(self.reconnect_delay)
-                self.reconnect_delay = min(
-                    self.reconnect_delay * 1.5, self.max_reconnect_delay
-                )
+                self.reconnect_delay = min(self.reconnect_delay * 1.5, self.max_reconnect_delay)
 
     async def _handle_message(self, message):
         """Handle incoming WebSocket messages"""
@@ -138,14 +130,12 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=5, retry_delay
     """Retry getting output with exponential backoff"""
     for attempt in range(max_retries):
         try:
-            response = requests.get(f"{base_url}/output/{job_id}")
+            response = requests.get(f"{base_url}/output/{job_id}", params={"userId": TEST_USER_ID})
             if response.status_code == 200:
                 return response.content
             elif response.status_code == 404:
                 wait_time = retry_delay * (2**attempt)
-                print(
-                    f"[datetime.now().strftime('%H:%M:%S')] Output not ready yet, retrying in {wait_time:.1f}s..."
-                )
+                print(f"[datetime.now().strftime('%H:%M:%S')] Output not ready yet, retrying in {wait_time:.1f}s...")
                 time.sleep(wait_time)
                 continue
             else:
@@ -159,39 +149,42 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=5, retry_delay
     raise TimeoutError("Failed to get output after maximum retries")
 
 
-def test_saved_podcasts(base_url: str, job_id: str):
-    """Test the saved podcasts endpoints"""
-    print(
-        f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints..."
-    )
+def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=1):
+    """Test the saved podcasts endpoints with retry logic"""
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints...")
 
-    # Test 1: Get all saved podcasts
+    # Test 1: Get all saved podcasts with retry
     print("\nTesting list all podcasts endpoint...")
-    response = requests.get(f"{base_url}/saved_podcasts")
-    assert response.status_code == 200, f"Failed to get saved podcasts: {response.text}"
-    podcasts = response.json()["podcasts"]
-    print(f"Found {len(podcasts)} saved podcasts")
+    for attempt in range(max_retries):
+        response = requests.get(f"{base_url}/saved_podcasts", params={"userId": TEST_USER_ID})
+        assert response.status_code == 200, f"Failed to get saved podcasts: {response.text}"
+        podcasts = response.json()["podcasts"]
+        print(f"Found {len(podcasts)} saved podcasts")
 
-    # Verify our new job_id is in the list
-    job_ids = [podcast["job_id"] for podcast in podcasts]
-    assert (
-        job_id in job_ids
-    ), f"Recently created job_id {job_id} not found in saved podcasts"
-    print(f"Successfully found job_id {job_id} in saved podcasts list")
+        # Check if our job_id is in the list
+        job_ids = [podcast["job_id"] for podcast in podcasts]
+        if job_id in job_ids:
+            print(f"Successfully found job_id {job_id} in saved podcasts list")
+            break
+        elif attempt < max_retries - 1:
+            wait_time = retry_delay * (2**attempt)
+            print(f"Job ID not found yet, retrying in {wait_time:.1f}s... (attempt {attempt + 1}/{max_retries})")
+            time.sleep(wait_time)
+            continue
+        else:
+            assert False, f"Recently created job_id {job_id} not found in saved podcasts after {max_retries} attempts"
 
     # Test 2: Get specific podcast metadata
     print("\nTesting individual podcast metadata endpoint...")
-    response = requests.get(f"{base_url}/saved_podcast/{job_id}/metadata")
-    assert (
-        response.status_code == 200
-    ), f"Failed to get podcast metadata: {response.text}"
+    response = requests.get(f"{base_url}/saved_podcast/{job_id}/metadata", params={"userId": TEST_USER_ID})
+    assert response.status_code == 200, f"Failed to get podcast metadata: {response.text}"
     metadata = response.json()
     print(f"Retrieved metadata for podcast: {metadata.get('filename', 'unknown')}")
     print(f"Metadata: {json.dumps(metadata, indent=2)}")
 
     # Test 3: Get specific podcast audio
     print("\nTesting individual podcast audio endpoint...")
-    response = requests.get(f"{base_url}/saved_podcast/{job_id}/audio")
+    response = requests.get(f"{base_url}/saved_podcast/{job_id}/audio", params={"userId": TEST_USER_ID})
     assert response.status_code == 200, f"Failed to get podcast audio: {response.text}"
     audio_data = response.content
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
@@ -208,9 +201,7 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
     process_url = f"{base_url}/process_pdf"
 
     # Update path resolution
-    current_dir = os.path.dirname(
-        os.path.abspath(__file__)
-    )  # This gets /tests directory
+    current_dir = os.path.dirname(os.path.abspath(__file__))  # This gets /tests directory
     project_root = os.path.dirname(current_dir)  # Go up one level to project root
     samples_dir = os.path.join(project_root, "samples")
 
@@ -222,41 +213,36 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
         else:
             sample_pdf_paths.append(os.path.join(samples_dir, pdf_file))
 
-    # Prepare the payload with updated schema
+    # Prepare the payload with updated schema and userId
     transcription_params = {
         "name": "ishan-test",
         "duration": 5,
         "speaker_1_name": "Bob",
         "voice_mapping": voice_mapping,
-        "guide": None,  # Optional guidance for transcription focus
-        "monologue": monologue,  # Add monologue flag
+        "guide": None,
+        "monologue": monologue,
+        "userId": TEST_USER_ID  # Add userId to transcription params
     }
 
     if not monologue:
         transcription_params["speaker_2_name"] = "Kate"
 
     # Step 1: Submit the PDF files and get job ID
-    print(
-        f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing..."
-    )
+    print(f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing...")
     print(f"Using voices: {voice_mapping}")
 
     pdf_files = [open(path, "rb") for path in sample_pdf_paths]
     try:
-        files = [
-            ("files", (os.path.basename(path), pdf_file, "application/pdf"))
-            for path, pdf_file in zip(sample_pdf_paths, pdf_files)
-        ]
+        files = [("files", (os.path.basename(path), pdf_file, "application/pdf")) 
+                for path, pdf_file in zip(sample_pdf_paths, pdf_files)]
 
         response = requests.post(
             process_url,
             files=files,
-            data={"transcription_params": json.dumps(transcription_params)},
+            data={"transcription_params": json.dumps(transcription_params)}
         )
 
-        assert (
-            response.status_code == 202
-        ), f"Expected status code 202, but got {response.status_code}"
+        assert response.status_code == 202, f"Expected status code 202, but got {response.status_code}"
         job_data = response.json()
         assert "job_id" in job_data, "Response missing job_id"
         job_id = job_data["job_id"]
@@ -277,9 +263,7 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
             raise TimeoutError(f"Test timed out after {max_wait} seconds")
 
         # If we get here, TTS completed successfully
-        print(
-            f"\n[{datetime.now().strftime('%H:%M:%S')}] TTS processing completed, retrieving audio file..."
-        )
+        print(f"\n[{datetime.now().strftime('%H:%M:%S')}] TTS processing completed, retrieving audio file...")
 
         # Get the final output with retry logic
         audio_content = get_output_with_retry(base_url, job_id)
@@ -288,9 +272,7 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
         output_path = os.path.join(current_dir, "output.mp3")
         with open(output_path, "wb") as f:
             f.write(audio_content)
-        print(
-            f"[{datetime.now().strftime('%H:%M:%S')}] Audio file saved as '{output_path}'"
-        )
+        print(f"[{datetime.now().strftime('%H:%M:%S')}] Audio file saved as '{output_path}'")
 
         # Test saved podcasts endpoints with the newly created job_id
         test_saved_podcasts(base_url, job_id)
@@ -300,9 +282,7 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Process PDF files for audio conversion"
-    )
+    parser = argparse.ArgumentParser(description="Process PDF files for audio conversion")
     parser.add_argument("pdf_files", nargs="+", help="PDF files to process")
     parser.add_argument(
         "--api-url",
@@ -319,5 +299,8 @@ if __name__ == "__main__":
     print(f"API URL: {args.api_url}")
     print(f"Processing PDF files: {args.pdf_files}")
     print(f"Monologue mode: {args.monologue}")
+    print(f"Using test user ID: {TEST_USER_ID}")
 
-    test_api(args.api_url, args.pdf_files, args.monologue)
+    # test_api(args.api_url, args.pdf_files, args.monologue)
+
+    test_saved_podcasts(args.api_url, "548a31f0-27ae-4afc-ad27-721127184e1b")
