@@ -114,7 +114,12 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
         # Now send initial status for all services
         for service in ServiceType:
-            status_data = redis_client.hgetall(f"status:{job_id}:{service}")
+            hget_key = f"status:{job_id}:{str(service)}"
+            logger.info(
+                f"Getting initial status for {job_id} {service} with key {hget_key}"
+            )
+
+            status_data = redis_client.hgetall(hget_key)
             if status_data:
                 status_msg = {
                     "service": service.value,
@@ -244,16 +249,6 @@ def process_pdf_task(
                                     f"{TTS_SERVICE_URL}/output/{job_id}"
                                 ).content
 
-                                # Store both the content and the ready flag
-                                redis_client.set(
-                                    f"result:{job_id}:{ServiceType.TTS}",
-                                    audio_content,
-                                    ex=MP3_CACHE_TTL,
-                                )
-                                redis_client.set(
-                                    f"final_status:{job_id}", "ready", ex=MP3_CACHE_TTL
-                                )
-
                                 # Store in DB
                                 storage_manager.store_audio(
                                     job_id,
@@ -331,7 +326,10 @@ async def get_status(job_id: str):
         span.set_attribute("job_id", job_id)
         statuses = {}
         for service in ServiceType:
-            status = redis_client.hgetall(f"status:{job_id}:{service}")
+            hget_key = f"status:{job_id}:{str(service)}"
+            logger.info(f"Getting status for {job_id} {service} with key {hget_key}")
+
+            status = redis_client.hgetall(hget_key)
             if status:
                 span.set_attribute(
                     f"{service.value}.status", status.get(b"status", b"").decode()
@@ -350,28 +348,23 @@ async def get_status(job_id: str):
 async def get_output(job_id: str):
     """Get the final TTS output"""
     with telemetry.tracer.start_as_current_span("api.job.output") as span:
-        # First check if the final result is ready
         span.set_attribute("job_id", job_id)
-        is_ready = redis_client.get(f"final_status:{job_id}")
-        span.set_attribute("is_ready", is_ready if is_ready else False)
-        if not is_ready:
-            # Check if TTS service reports completion
-            tts_status = redis_client.hgetall(f"status:{job_id}:{ServiceType.TTS}")
-            if not tts_status:
-                raise HTTPException(status_code=404, detail="Result not found")
-            if tts_status.get(b"status", b"").decode() != "completed":
-                span.set_attribute(
-                    "tts_status", tts_status.get(b"status", b"").decode()
-                )
-                raise HTTPException(status_code=404, detail="TTS not completed")
 
-            # If TTS reports complete but result not ready, it's still being fetched
-            raise HTTPException(
-                status_code=202,  # Too Early
-                detail="Result is being prepared",
-            )
+        # Check if TTS service reports completion
+        tts_status_key = f"status:{job_id}:{str(ServiceType.TTS)}"
+        span.set_attribute("tts_status_key", tts_status_key)
 
-        result = redis_client.get(f"result:{job_id}:{ServiceType.TTS}")
+        tts_status = redis_client.hgetall(tts_status_key)
+        if not tts_status:
+            raise HTTPException(status_code=404, detail="Result not found")
+        if tts_status.get(b"status", b"").decode() != str(JobStatus.COMPLETED):
+            span.set_attribute("tts_status", tts_status.get(b"status", b"").decode())
+            raise HTTPException(status_code=404, detail="TTS not completed")
+
+        get_tts_result_key = f"result:{job_id}:{str(ServiceType.TTS)}"
+        span.set_attribute("get_tts_result_key", get_tts_result_key)
+
+        result = redis_client.get(get_tts_result_key)
         if not result:
             logger.info(f"Final result not found in cache for {job_id}. Checking DB...")
             result = storage_manager.get_podcast_audio(job_id)

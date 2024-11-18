@@ -26,7 +26,7 @@ DEFAULT_VOICE_MAPPING = {"speaker-1": DEFAULT_VOICE_1, "speaker-2": DEFAULT_VOIC
 
 telemetry = OpenTelemetryInstrumentation()
 config = OpenTelemetryConfig(
-    service_name="agent-service",
+    service_name="tts-service",
     otlp_endpoint=os.getenv("OTLP_ENDPOINT", "http://jaeger:4317"),
     enable_redis=True,
     enable_requests=True,
