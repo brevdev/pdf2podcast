@@ -103,6 +103,7 @@ class StorageManager:
 
     def store_audio(
         self,
+        user_id: str,
         job_id: str,
         audio_content: bytes,
         filename: str,
@@ -111,9 +112,10 @@ class StorageManager:
         """Store audio file with metadata in MinIO"""
         with self.telemetry.tracer.start_as_current_span("store_audio") as span:
             span.set_attribute("job_id", job_id)
+            span.set_attribute("user_id", user_id)
             span.set_attribute("filename", filename)
             try:
-                object_name = f"{job_id}/{filename}"
+                object_name = self._get_object_path(user_id, job_id, filename)
 
                 # Convert transcription params to JSON string for metadata
                 params_json = json.dumps(transcription_params.model_dump())
@@ -129,9 +131,7 @@ class StorageManager:
                     content_type="audio/mpeg",
                     metadata=metadata,
                 )
-                logger.info(
-                    f"Stored audio for {job_id} in MinIO as {object_name} with metadata"
-                )
+                logger.info(f"Stored audio for user {user_id}, job {job_id} in MinIO as {object_name} with metadata")
 
             except S3Error as e:
                 span.set_status(StatusCode.ERROR)
@@ -139,14 +139,16 @@ class StorageManager:
                 logger.error(f"Failed to store audio in MinIO: {e}")
                 raise
 
-    def get_podcast_audio(self, job_id: str) -> Optional[str]:
+    def get_podcast_audio(self, user_id: str, job_id: str) -> Optional[str]:
         """Get the audio data for a specific podcast by job_id"""
         with self.telemetry.tracer.start_as_current_span("get_podcast_audio") as span:
             span.set_attribute("job_id", job_id)
+            span.set_attribute("user_id", user_id)
             try:
-                # Find the file with matching job_id
+                # Find the file with matching user_id and job_id
+                prefix = f"{user_id}/{job_id}/"
                 objects = self.client.list_objects(
-                    self.bucket_name, prefix=f"{job_id}/", recursive=True
+                    self.bucket_name, prefix=prefix, recursive=True
                 )
 
                 for obj in objects:
@@ -162,16 +164,17 @@ class StorageManager:
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(f"Failed to get audio for job_id {job_id}: {str(e)}")
+                logger.error(f"Failed to get audio for user {user_id}, job {job_id}: {str(e)}")
                 raise
 
-    def get_file(self, job_id: str, filename: str) -> Optional[bytes]:
-        """Get any file from storage by job_id and filename"""
+    def get_file(self, user_id: str, job_id: str, filename: str) -> Optional[bytes]:
+        """Get any file from storage by user_id, job_id and filename"""
         with self.telemetry.tracer.start_as_current_span("get_file") as span:
             span.set_attribute("job_id", job_id)
+            span.set_attribute("user_id", user_id)
             span.set_attribute("filename", filename)
             try:
-                object_name = f"{job_id}/{filename}"
+                object_name = self._get_object_path(user_id, job_id, filename)
 
                 try:
                     data = self.client.get_object(self.bucket_name, object_name).read()
@@ -186,18 +189,20 @@ class StorageManager:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
                 logger.error(
-                    f"Failed to get file {filename} for job_id {job_id}: {str(e)}"
+                    f"Failed to get file {filename} for user {user_id}, job {job_id}: {str(e)}"
                 )
                 raise
 
-    def delete_job_files(self, job_id: str) -> bool:
-        """Delete all files associated with a job_id"""
+    def delete_job_files(self, user_id: str, job_id: str) -> bool:
+        """Delete all files associated with a user_id and job_id"""
         with self.telemetry.tracer.start_as_current_span("delete_job_files") as span:
             span.set_attribute("job_id", job_id)
+            span.set_attribute("user_id", user_id)
             try:
-                # List all objects with the job_id prefix
+                # List all objects with the user_id/job_id prefix
+                prefix = f"{user_id}/{job_id}/"
                 objects = self.client.list_objects(
-                    self.bucket_name, prefix=f"{job_id}/", recursive=True
+                    self.bucket_name, prefix=prefix, recursive=True
                 )
 
                 # Delete each object
@@ -210,15 +215,19 @@ class StorageManager:
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(f"Failed to delete files for job_id {job_id}: {str(e)}")
+                logger.error(f"Failed to delete files for user {user_id}, job {job_id}: {str(e)}")
                 return False
 
-    # TODO: rework
-    def list_files_metadata(self):
-        """Lists metadata in the from of TranscriptionParams for an audio file which was created in store_audio"""
+    def list_files_metadata(self, user_id: str = None):
+        """Lists metadata filtered by user_id if provided"""
         with self.telemetry.tracer.start_as_current_span("list_files_metadata") as span:
             try:
-                objects = self.client.list_objects(self.bucket_name, recursive=True)
+                # If user_id is provided, use it as prefix to filter results
+                prefix = f"{user_id}/" if user_id else ""
+                span.set_attribute("user_id", user_id)
+                span.set_attribute("prefix", prefix)
+                
+                objects = self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True)
                 files = []
 
                 for obj in objects:
@@ -236,9 +245,12 @@ class StorageManager:
                         if not path_parts[-1].endswith(".mp3"):
                             continue
 
-                        job_id = path_parts[0]
+                        # Update to handle new path structure: user_id/job_id/filename
+                        user_id = path_parts[0]
+                        job_id = path_parts[1]
 
                         file_info = {
+                            "user_id": user_id,
                             "job_id": job_id,
                             "filename": path_parts[-1],
                             "size": stat.size,
