@@ -162,7 +162,7 @@ def get_output_with_retry(base_url: str, job_id: str, max_retries=5, retry_delay
     raise TimeoutError("Failed to get output after maximum retries")
 
 
-def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=1):
+def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=5):
     """Test the saved podcasts endpoints with retry logic"""
     print(
         f"\n[{datetime.now().strftime('%H:%M:%S')}] Testing saved podcasts endpoints..."
