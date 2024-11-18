@@ -115,7 +115,9 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         # Now send initial status for all services
         for service in ServiceType:
             hget_key = f"status:{job_id}:{str(service)}"
-            logger.info(f"Getting initial status for {job_id} {service} with key {hget_key}")
+            logger.info(
+                f"Getting initial status for {job_id} {service} with key {hget_key}"
+            )
 
             status_data = redis_client.hgetall(hget_key)
             if status_data:
@@ -356,9 +358,7 @@ async def get_output(job_id: str):
         if not tts_status:
             raise HTTPException(status_code=404, detail="Result not found")
         if tts_status.get(b"status", b"").decode() != str(JobStatus.COMPLETED):
-            span.set_attribute(
-                "tts_status", tts_status.get(b"status", b"").decode()
-            )
+            span.set_attribute("tts_status", tts_status.get(b"status", b"").decode())
             raise HTTPException(status_code=404, detail="TTS not completed")
 
         get_tts_result_key = f"result:{job_id}:{str(ServiceType.TTS)}"
