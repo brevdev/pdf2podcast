@@ -179,14 +179,16 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Create final conversation by formatting as JSON
-                final_conversation: Conversation = await podcast_create_final_conversation(
-                    combined_dialogues,
-                    request,
-                    llm_manager,
-                    prompt_tracker,
-                    job_id,
-                    job_manager,
-                    logger,
+                final_conversation: Conversation = (
+                    await podcast_create_final_conversation(
+                        combined_dialogues,
+                        request,
+                        llm_manager,
+                        prompt_tracker,
+                        job_id,
+                        job_manager,
+                        logger,
+                    )
                 )
                 # Store result
                 job_manager.set_result_with_expiration(
