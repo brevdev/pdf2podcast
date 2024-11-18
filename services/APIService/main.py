@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 import redis
 import requests
+import httpx
 import ujson as json
 import uuid
 import os
@@ -68,6 +69,10 @@ TTS_SERVICE_URL = os.getenv("TTS_SERVICE_URL", "http://localhost:8889")
 
 # MP3 Cache TTL
 MP3_CACHE_TTL = 60 * 60 * 4  # 4 hours
+
+# NV-Ingest
+DEFAULT_TIMEOUT = 600  # seconds
+NV_INGEST_RETRIEVE_URL = "https://nv-ingest-rest-endpoint.brevlab.com/v1"
 
 # CORS setup
 CORS_ORIGINS = os.getenv(
@@ -652,10 +657,28 @@ async def delete_saved_podcast(
 @app.get("/rag")
 async def rag(query: str, k: int = Query(..., description="Number of results to return")):
     """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
-    pass
-
-
-
+    # hit the NV-Ingest endpoint with /query and pass in the query and k
+    with telemetry.tracer.start_as_current_span("api.rag") as span:
+        span.set_attribute("query", query)
+        span.set_attribute("k", k)
+        async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
+            try:
+                response = await client.post(
+                    f"{NV_INGEST_RETRIEVE_URL}/query",
+                    json={"query": query, "k": k},
+                )
+                if response.status_code != 200:
+                    span.set_status(StatusCode.ERROR, "failed to retrieve from NV-Ingest")
+                    raise HTTPException(
+                        status_code=response.status_code,
+                        detail=f"NV-Ingest error: {response.text}",
+                    )
+                return response.json()
+            except Exception as e:
+                span.set_status(StatusCode.ERROR, "failed to retrieve from NV-Ingest")
+                raise HTTPException(
+                    status_code=500, detail=f"Failed to retrieve from NV-Ingest: {str(e)}"
+                )
 
 @app.get("/health")
 async def health():
