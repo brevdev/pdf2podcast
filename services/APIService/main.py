@@ -115,7 +115,8 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
         # Now send initial status for all services
         for service in ServiceType:
             hget_key = f"status:{job_id}:{str(service)}"
-            logger.info(f"Getting iniiial status for {job_id} {service} with key {hget_key}")
+            logger.info(f"Getting initial status for {job_id} {service} with key {hget_key}")
+
             status_data = redis_client.hgetall(hget_key)
             if status_data:
                 status_msg = {
@@ -325,6 +326,7 @@ async def get_status(job_id: str):
         for service in ServiceType:
             hget_key = f"status:{job_id}:{str(service)}"
             logger.info(f"Getting status for {job_id} {service} with key {hget_key}")
+
             status = redis_client.hgetall(hget_key)
             if status:
                 span.set_attribute(
