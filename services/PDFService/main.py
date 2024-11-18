@@ -7,10 +7,9 @@ import httpx
 import tempfile
 import os
 import logging
-import time
 import asyncio
 import ujson as json
-from typing import Optional, List
+from typing import List
 from pydantic import BaseModel, Field
 from enum import Enum
 from datetime import datetime
@@ -291,7 +290,6 @@ async def convert_pdf(
             content = await file.read()
             contents.append(content)
             filenames.append(file.filename)
-
 
         span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
