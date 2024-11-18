@@ -35,4 +35,4 @@ jobs:
         pip install -r tests/requirements-test.txt  # Make sure this file exists with your test dependencies
 
     - name: Run E2E tests
-      run: python tests/test.py federer.pdf PNP_Proof.pdf
+      run: python tests/test.py --monologue bofa-context.pdf gs-context.pdf

@@ -660,8 +660,11 @@ async def delete_saved_podcast(
                 status_code=500, detail=f"Failed to delete podcast: {str(e)}"
             )
 
+
 @app.get("/rag")
-async def rag(query: str, k: int = Query(..., description="Number of results to return")):
+async def rag(
+    query: str, k: int = Query(..., description="Number of results to return")
+):
     """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
     # hit the NV-Ingest endpoint with /query and pass in the query and k
     with telemetry.tracer.start_as_current_span("api.rag") as span:
@@ -674,7 +677,9 @@ async def rag(query: str, k: int = Query(..., description="Number of results to 
                     json={"query": query, "k": k},
                 )
                 if response.status_code != 200:
-                    span.set_status(StatusCode.ERROR, "failed to retrieve from NV-Ingest")
+                    span.set_status(
+                        StatusCode.ERROR, "failed to retrieve from NV-Ingest"
+                    )
                     raise HTTPException(
                         status_code=response.status_code,
                         detail=f"NV-Ingest error: {response.text}",
@@ -683,8 +688,10 @@ async def rag(query: str, k: int = Query(..., description="Number of results to 
             except Exception as e:
                 span.set_status(StatusCode.ERROR, "failed to retrieve from NV-Ingest")
                 raise HTTPException(
-                    status_code=500, detail=f"Failed to retrieve from NV-Ingest: {str(e)}"
+                    status_code=500,
+                    detail=f"Failed to retrieve from NV-Ingest: {str(e)}",
                 )
+
 
 @app.get("/health")
 async def health():
