@@ -56,7 +56,9 @@ class PDFMetadata(BaseModel):
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
-async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionResult]:
+async def convert_pdfs_to_markdown(
+    pdf_paths: List[str], job_id: str
+) -> List[PDFConversionResult]:
     """Convert multiple PDFs to Markdown using the external API service"""
     logger.info(f"Sending {len(pdf_paths)} PDFs to external conversion service")
     with telemetry.tracer.start_as_current_span("pdf.convert_pdfs_to_markdown") as span:
@@ -79,7 +81,7 @@ async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionRe
                     span.set_attribute("model_api_url", MODEL_API_URL)
                     logger.info(f"Sending {len(files)} files to model API")
                     response = await client.post(
-                        f"{MODEL_API_URL}/convert", files=files
+                        f"{MODEL_API_URL}/convert", files=files, data={"job_id": job_id}
                     )
                 finally:
                     # Clean up file handles after request is complete
@@ -204,7 +206,7 @@ async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str])
                     f"Starting PDF to Markdown conversion for {len(temp_files)} files"
                 )
                 # Convert all PDFs in a single batch
-                results = await convert_pdfs_to_markdown(temp_files)
+                results = await convert_pdfs_to_markdown(temp_files, job_id)
                 logger.info(f"Conversion completed, processing {len(results)} results")
 
                 # Create metadata list

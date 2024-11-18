@@ -41,7 +41,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 # Initialize FastAPI app
-app = FastAPI(debug=True)
+app = FastAPI(
+    debug=True,
+    title="ARA API Service",
+    description="API Service for the ARA project",
+    docs_url="/docs",
+    redoc_url="/redoc",
+)
 
 # Initialize OpenTelemetry
 telemetry = OpenTelemetryInstrumentation()
