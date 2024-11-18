@@ -255,6 +255,7 @@ def process_pdf_task(
 
                                 # Store in DB
                                 storage_manager.store_audio(
+                                    transcription_params.userId,
                                     job_id,
                                     audio_content,
                                     f"{job_id}.mp3",
@@ -371,7 +372,7 @@ async def get_output(job_id: str, userId: str = Query(..., description="KAS User
         result = redis_client.get(get_tts_result_key)
         if not result:
             logger.info(f"Final result not found in cache for {job_id}. Checking DB...")
-            result = storage_manager.get_podcast_audio(job_id)
+            result = storage_manager.get_podcast_audio(userId, job_id)
             if not result:
                 span.set_status(StatusCode.ERROR, "result not found")
                 raise HTTPException(status_code=404, detail="Result not found")
@@ -476,7 +477,7 @@ async def get_saved_podcast(job_id: str, userId: str = Query(..., description="K
                 )
 
             # Get audio data
-            audio_data = storage_manager.get_podcast_audio(job_id)
+            audio_data = storage_manager.get_podcast_audio(userId, job_id)
             if not audio_data:
                 raise HTTPException(
                     status_code=404, detail=f"Audio data for podcast {job_id} not found"
@@ -509,7 +510,7 @@ async def get_saved_podcast_transcript(job_id: str, userId: str = Query(..., des
             span.set_attribute("job_id", job_id)
             filename = f"{job_id}_agent_result.json"
             span.set_attribute("filename", filename)
-            raw_data = storage_manager.get_file(job_id, filename) # TODO: filter by user_id
+            raw_data = storage_manager.get_file(userId, job_id, filename)
 
             if not raw_data:
                 raise HTTPException(
@@ -541,7 +542,7 @@ async def get_saved_podcast_agent_workflow(job_id: str, userId: str = Query(...,
             span.set_attribute("job_id", job_id)
             filename = f"{job_id}_prompt_tracker.json"
             span.set_attribute("filename", filename)
-            raw_data = storage_manager.get_file(job_id, filename) # TODO: filter by user_id
+            raw_data = storage_manager.get_file(userId, job_id, filename)
 
             if not raw_data:
                 span.set_status(StatusCode.ERROR, "not found")
@@ -567,7 +568,7 @@ async def get_saved_podcast_pdf(job_id: str, userId: str = Query(..., descriptio
             span.set_attribute("job_id", job_id)
             filename = f"{job_id}.pdf"
             span.set_attribute("filename", filename)
-            pdf_data = storage_manager.get_file(job_id, filename) # TODO: filter by user_id
+            pdf_data = storage_manager.get_file(userId, job_id, filename)
 
             if not pdf_data:
                 span.set_status(StatusCode.ERROR, "not found")
@@ -596,7 +597,7 @@ async def delete_saved_podcast(job_id: str, userId: str = Query(..., description
         try:
             span.set_attribute("job_id", job_id)
             # Convert generator to list before checking length
-            saved_files = list(storage_manager.list_files_metadata()) # TODO: filter by user_id
+            saved_files = list(storage_manager.list_files_metadata(user_id=userId))
             podcast_metadata = next(
                 (file for file in saved_files if file["job_id"] == job_id), None
             )
@@ -607,7 +608,7 @@ async def delete_saved_podcast(job_id: str, userId: str = Query(..., description
                     status_code=404, detail=f"Podcast with job_id {job_id} not found"
                 )
 
-            success = storage_manager.delete_job_files(job_id) # TODO: filter by user_id
+            success = storage_manager.delete_job_files(userId, job_id)
 
             if not success:
                 raise HTTPException(
