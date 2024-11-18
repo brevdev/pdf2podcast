@@ -93,12 +93,16 @@ class StorageManager:
                     io.BytesIO(content),
                     length=len(content),
                     content_type=content_type,
-                    metadata=metadata.model_dump() if hasattr(metadata, "model_dump") else metadata,
+                    metadata=metadata.model_dump()
+                    if hasattr(metadata, "model_dump")
+                    else metadata,
                 )
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(f"Failed to store file {filename} for user {user_id}, job {job_id}: {str(e)}")
+                logger.error(
+                    f"Failed to store file {filename} for user {user_id}, job {job_id}: {str(e)}"
+                )
                 raise
 
     def store_audio(
@@ -131,7 +135,9 @@ class StorageManager:
                     content_type="audio/mpeg",
                     metadata=metadata,
                 )
-                logger.info(f"Stored audio for user {user_id}, job {job_id} in MinIO as {object_name} with metadata")
+                logger.info(
+                    f"Stored audio for user {user_id}, job {job_id} in MinIO as {object_name} with metadata"
+                )
 
             except S3Error as e:
                 span.set_status(StatusCode.ERROR)
@@ -164,7 +170,9 @@ class StorageManager:
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(f"Failed to get audio for user {user_id}, job {job_id}: {str(e)}")
+                logger.error(
+                    f"Failed to get audio for user {user_id}, job {job_id}: {str(e)}"
+                )
                 raise
 
     def get_file(self, user_id: str, job_id: str, filename: str) -> Optional[bytes]:
@@ -215,7 +223,9 @@ class StorageManager:
             except Exception as e:
                 span.set_status(StatusCode.ERROR)
                 span.record_exception(e)
-                logger.error(f"Failed to delete files for user {user_id}, job {job_id}: {str(e)}")
+                logger.error(
+                    f"Failed to delete files for user {user_id}, job {job_id}: {str(e)}"
+                )
                 return False
 
     def list_files_metadata(self, user_id: str = None):
@@ -226,8 +236,10 @@ class StorageManager:
                 prefix = f"{user_id}/" if user_id else ""
                 span.set_attribute("user_id", user_id)
                 span.set_attribute("prefix", prefix)
-                
-                objects = self.client.list_objects(self.bucket_name, prefix=prefix, recursive=True)
+
+                objects = self.client.list_objects(
+                    self.bucket_name, prefix=prefix, recursive=True
+                )
                 files = []
 
                 for obj in objects:

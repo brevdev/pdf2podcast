@@ -399,21 +399,20 @@ async def cleanup_jobs():
 
 
 @app.get("/saved_podcasts", response_model=Dict[str, List[SavedPodcast]])
-async def get_saved_podcasts(userId: str = Query(..., description="KAS User ID", min_length=1)):
+async def get_saved_podcasts(
+    userId: str = Query(..., description="KAS User ID", min_length=1),
+):
     """Get a list of all saved podcasts from storage with their audio data"""
     try:
         with telemetry.tracer.start_as_current_span("api.saved_podcasts") as span:
             if not userId.strip():  # Check for whitespace-only strings
-                raise HTTPException(
-                    status_code=400,
-                    detail="userId cannot be empty"
-                )
-            
+                raise HTTPException(status_code=400, detail="userId cannot be empty")
+
             # Pass userId to filter results - storage manager handles the filtering
             saved_files = storage_manager.list_files_metadata(user_id=userId)
             span.set_attribute("num_files", len(saved_files))
             span.set_attribute("user_id", userId)
-            
+
             return {
                 "podcasts": [
                     SavedPodcast(
@@ -435,7 +434,9 @@ async def get_saved_podcasts(userId: str = Query(..., description="KAS User ID",
 
 
 @app.get("/saved_podcast/{job_id}/metadata", response_model=SavedPodcast)
-async def get_saved_podcast_metadata(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcast_metadata(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Get a specific saved podcast metadata without audio data"""
     try:
         with telemetry.tracer.start_as_current_span(
@@ -466,7 +467,9 @@ async def get_saved_podcast_metadata(job_id: str, userId: str = Query(..., descr
 
 
 @app.get("/saved_podcast/{job_id}/audio", response_model=SavedPodcastWithAudio)
-async def get_saved_podcast(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcast(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Get a specific saved podcast with its audio data"""
     try:
         with telemetry.tracer.start_as_current_span("api.saved_podcast.audio") as span:
@@ -509,7 +512,9 @@ async def get_saved_podcast(job_id: str, userId: str = Query(..., description="K
 
 
 @app.get("/saved_podcast/{job_id}/transcript", response_model=Conversation)
-async def get_saved_podcast_transcript(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcast_transcript(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Get a specific saved podcast transcript"""
     with telemetry.tracer.start_as_current_span("api.saved_podcast.transcript") as span:
         try:
@@ -541,7 +546,9 @@ async def get_saved_podcast_transcript(job_id: str, userId: str = Query(..., des
 
 
 @app.get("/saved_podcast/{job_id}/history")
-async def get_saved_podcast_agent_workflow(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcast_agent_workflow(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Get a specific saved podcast agent workflow"""
     with telemetry.tracer.start_as_current_span("api.saved_podcast.history") as span:
         try:
@@ -567,7 +574,9 @@ async def get_saved_podcast_agent_workflow(job_id: str, userId: str = Query(...,
 
 
 @app.get("/saved_podcast/{job_id}/pdf")
-async def get_saved_podcast_pdf(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def get_saved_podcast_pdf(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Get the original PDF file for a specific podcast"""
     with telemetry.tracer.start_as_current_span("api.saved_podcast.pdf") as span:
         try:
@@ -597,7 +606,9 @@ async def get_saved_podcast_pdf(job_id: str, userId: str = Query(..., descriptio
 
 
 @app.delete("/saved_podcast/{job_id}")
-async def delete_saved_podcast(job_id: str, userId: str = Query(..., description="KAS User ID")):
+async def delete_saved_podcast(
+    job_id: str, userId: str = Query(..., description="KAS User ID")
+):
     """Delete a specific saved podcast and all its associated files"""
     with telemetry.tracer.start_as_current_span("api.saved_podcast.delete") as span:
         try:
