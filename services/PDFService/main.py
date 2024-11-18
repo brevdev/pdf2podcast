@@ -57,7 +57,7 @@ class PDFMetadata(BaseModel):
 
 
 async def convert_pdfs_to_markdown(
-    pdf_paths: List[str], job_id: str
+    pdf_paths: List[str], job_id: str, vdb_task: bool = False
 ) -> List[PDFConversionResult]:
     """Convert multiple PDFs to Markdown using the external API service"""
     logger.info(f"Sending {len(pdf_paths)} PDFs to external conversion service")
@@ -81,7 +81,9 @@ async def convert_pdfs_to_markdown(
                     span.set_attribute("model_api_url", MODEL_API_URL)
                     logger.info(f"Sending {len(files)} files to model API")
                     response = await client.post(
-                        f"{MODEL_API_URL}/convert", files=files, data={"job_id": job_id}
+                        f"{MODEL_API_URL}/convert",
+                        files=files,
+                        data={"job_id": job_id, "vdb_task": vdb_task},
                     )
                 finally:
                     # Clean up file handles after request is complete
