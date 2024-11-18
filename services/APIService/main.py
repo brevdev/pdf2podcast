@@ -649,6 +649,13 @@ async def delete_saved_podcast(
                 status_code=500, detail=f"Failed to delete podcast: {str(e)}"
             )
 
+@app.get("/rag")
+async def rag(query: str, k: int = Query(..., description="Number of results to return")):
+    """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
+    pass
+
+
+
 
 @app.get("/health")
 async def health():
