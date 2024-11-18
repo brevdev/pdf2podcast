@@ -86,28 +86,8 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
     try:
         # Accept the WebSocket connection
         await manager.connect(websocket, job_id)
-        logger.info(f"Sending ready check to client {job_id}")
 
-        # Send a ready check message
-        await websocket.send_json({"type": "ready_check"})
-
-        # Wait for client acknowledgment with increased timeout
-        try:
-            response = await asyncio.wait_for(websocket.receive_text(), timeout=10.0)
-            if response != "ready":
-                logger.warning(
-                    f"Client {job_id} sent invalid ready response: {response}"
-                )
-                return
-            logger.info(f"Client {job_id} acknowledged ready state")
-        except asyncio.TimeoutError:
-            logger.warning(f"Client {job_id} ready check timeout")
-            return
-        except Exception as e:
-            logger.error(f"Error during ready check for {job_id}: {e}")
-            return
-
-        # Now send initial status for all services
+        # Send initial status for all services
         for service in ServiceType:
             hget_key = f"status:{job_id}:{str(service)}"
             logger.info(

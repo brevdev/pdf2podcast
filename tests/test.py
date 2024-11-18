@@ -26,7 +26,6 @@ class StatusMonitor:
         self.websocket = None
         self.reconnect_delay = 1.0
         self.max_reconnect_delay = 30.0
-        self.ready_event = asyncio.Event()
 
     def _get_ws_url(self, base_url):
         """Convert HTTP URL to WebSocket URL"""
@@ -56,6 +55,7 @@ class StatusMonitor:
         loop.run_until_complete(self._monitor_status())
 
     async def _monitor_status(self):
+        """Monitor status updates via WebSocket with automatic reconnection"""
         while not self.stop_event.is_set():
             try:
                 async with websockets.connect(self.ws_url) as websocket:
@@ -68,19 +68,6 @@ class StatusMonitor:
                             message = await asyncio.wait_for(
                                 websocket.recv(), timeout=30
                             )
-
-                            # Handle ready check message
-                            try:
-                                data = json.loads(message)
-                                if data.get("type") == "ready_check":
-                                    await websocket.send("ready")
-                                    print(
-                                        f"[{self.get_time()}] Sent ready acknowledgment"
-                                    )
-                                    continue
-                            except json.JSONDecodeError:
-                                pass
-
                             await self._handle_message(message)
                         except asyncio.TimeoutError:
                             try:
@@ -90,14 +77,12 @@ class StatusMonitor:
                                 break
 
             except websockets.exceptions.ConnectionClosed:
-                self.ready_event.clear()
                 if not self.stop_event.is_set():
                     print(
                         f"[{self.get_time()}] WebSocket connection closed, reconnecting..."
                     )
 
             except Exception as e:
-                self.ready_event.clear()
                 if not self.stop_event.is_set():
                     print(f"[{self.get_time()}] WebSocket error: {e}, reconnecting...")
 
