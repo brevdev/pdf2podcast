@@ -342,6 +342,4 @@ if __name__ == "__main__":
     print(f"Monologue mode: {args.monologue}")
     print(f"Using test user ID: {TEST_USER_ID}")
 
-    # test_api(args.api_url, args.pdf_files, args.monologue)
-
-    test_saved_podcasts(args.api_url, "548a31f0-27ae-4afc-ad27-721127184e1b")
+    test_api(args.api_url, args.pdf_files, args.monologue)
