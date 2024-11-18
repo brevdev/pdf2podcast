@@ -31,7 +31,7 @@ telemetry.initialize(config, app)
 job_manager = JobStatusManager(ServiceType.PDF, telemetry=telemetry)
 
 # Configuration
-MODEL_API_URL = os.getenv("MODEL_API_URL", "https://pdf-gyrdps568.brevlab.com")
+MODEL_API_URL = os.getenv("MODEL_API_URL")
 DEFAULT_TIMEOUT = 600  # seconds
 
 
