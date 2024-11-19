@@ -98,6 +98,10 @@ class TranscriptionParams(BaseModel):
     guide: Optional[str] = Field(
         None, description="Optional guidance for the transcription focus and structure"
     )
+    vdb_task: bool = Field(
+        False,
+        description="If True, creates a VDB task when running NV-Ingest allowing for retrieval abilities",
+    )
 
     @model_validator(mode="after")
     def validate_monologue_settings(self) -> "TranscriptionParams":

@@ -163,7 +163,9 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
 
 def process_pdf_task(
-    job_id: str, files_content: List[bytes], transcription_params: TranscriptionParams
+    job_id: str,
+    files_content: List[bytes],
+    transcription_params: TranscriptionParams,
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf_task") as span:
         span.set_attribute("job_id", job_id)
@@ -192,7 +194,9 @@ def process_pdf_task(
             ]
 
             requests.post(
-                f"{PDF_SERVICE_URL}/convert", files=files, data={"job_id": job_id}
+                f"{PDF_SERVICE_URL}/convert",
+                files=files,
+                data={"job_id": job_id, "vdb_task": transcription_params.vdb_task},
             )
 
             # Monitor services
