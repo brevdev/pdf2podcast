@@ -251,7 +251,7 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False, vdb: 
         "guide": None,
         "monologue": monologue,
         "userId": TEST_USER_ID,
-        "vdb": vdb,  # Add VDB parameter
+        "vdb_task": vdb,
     }
 
     if not monologue:

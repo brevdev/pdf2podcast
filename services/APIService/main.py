@@ -193,6 +193,9 @@ def process_pdf_task(
                 for i, content in enumerate(files_content)
             ]
 
+            logger.info(
+                f"Sending {len(files)} PDFs to PDF Service for {job_id} with VDB task: {transcription_params.vdb_task}"
+            )
             requests.post(
                 f"{PDF_SERVICE_URL}/convert",
                 files=files,
@@ -665,21 +668,39 @@ async def delete_saved_podcast(
             )
 
 
-@app.get("/rag")
+@app.post("/rag")
 async def rag(
-    query: str,
-    k: int = Query(..., description="Number of results to return"),
-    job_id: str = Query(..., description="Job ID"),
+    payload: dict,
 ):
-    """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
+    """RAG endpoint that interfaces with NV-Ingest to retrieve top k results
+    
+    Expected payload format:
+    {
+        "query": "your search query",
+        "k": 3,
+        "job_id": "69220b71-3f0f-43cd-b5f4-24c98963d0bd"
+    }
+    """
     with telemetry.tracer.start_as_current_span("api.rag") as span:
-        span.set_attribute("query", query)
-        span.set_attribute("k", k)
+        # Validate required fields
+        if not all(key in payload for key in ["query", "k", "job_id"]):
+            raise HTTPException(
+                status_code=400,
+                detail="Missing required fields. Please provide 'query', 'k', and 'job_id'"
+            )
+
+        span.set_attribute("query", payload["query"])
+        span.set_attribute("k", payload["k"])
+        
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
             try:
                 response = await client.post(
                     f"{NV_INGEST_RETRIEVE_URL}/query",
-                    json={"query": query, "k": k, "job_id": job_id},
+                    json={
+                        "query": payload["query"],
+                        "k": payload["k"],
+                        "job_id": payload["job_id"],
+                    },
                 )
                 if response.status_code != 200:
                     span.set_status(
