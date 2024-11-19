@@ -668,7 +668,6 @@ async def rag(
     job_id: str = Query(..., description="Job ID"),
 ):
     """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
-    # hit the NV-Ingest endpoint with /query and pass in the query and k
     with telemetry.tracer.start_as_current_span("api.rag") as span:
         span.set_attribute("query", query)
         span.set_attribute("k", k)
