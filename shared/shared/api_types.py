@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field, model_validator
 from typing import Optional, Dict, List
-from pdf_types import PDFMetadata
+from .pdf_types import PDFMetadata
 from enum import Enum
 
 
