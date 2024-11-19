@@ -1,10 +1,6 @@
-from shared.shared_types import (
-    JobStatus,
-    Conversation,
-    PDFMetadata,
-    TranscriptionRequest,
-    PodcastOutline,
-)
+from shared.pdf_types import PDFMetadata
+from shared.podcast_types import Conversation, PodcastOutline
+from shared.api_types import JobStatus, TranscriptionRequest
 from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from typing import List, Dict, Any, Coroutine

@@ -3,7 +3,7 @@ import ujson as json
 import base64
 from minio import Minio
 from minio.error import S3Error
-from shared.shared_types import TranscriptionParams
+from shared.api_types import TranscriptionParams
 from shared.otel import OpenTelemetryInstrumentation
 from opentelemetry.trace.status import StatusCode
 import os

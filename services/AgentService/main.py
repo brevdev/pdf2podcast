@@ -1,11 +1,10 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import (
+from shared.api_types import (
     ServiceType,
     JobStatus,
-    Conversation,
-    TranscriptionRequest,
-    PodcastOutline,
 )
+from shared.podcast_types import Conversation, PodcastOutline
+from shared.api_types import TranscriptionRequest
 from podcast_flow import (
     podcast_summarize_pdfs,
     podcast_generate_raw_outline,

@@ -10,16 +10,9 @@ from fastapi import (
     WebSocketDisconnect,
     Query,
 )
-from shared.shared_types import (
-    ServiceType,
-    JobStatus,
-    StatusUpdate,
-    TranscriptionParams,
-    SavedPodcast,
-    SavedPodcastWithAudio,
-    Conversation,
-    PromptTracker,
-)
+from shared.api_types import ServiceType, JobStatus, StatusUpdate, TranscriptionParams
+from shared.prompt_types import PromptTracker
+from shared.podcast_types import SavedPodcast, SavedPodcastWithAudio, Conversation
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
