@@ -35,7 +35,9 @@ MODEL_API_URL = os.getenv(
 DEFAULT_TIMEOUT = 600  # seconds
 
 
-async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionResult]:
+async def convert_pdfs_to_markdown(
+    pdf_paths: List[str], job_id: str, vdb_task: bool = False
+) -> List[PDFConversionResult]:
     """Convert multiple PDFs to Markdown using the external API service"""
     logger.info(f"Sending {len(pdf_paths)} PDFs to external conversion service")
     with telemetry.tracer.start_as_current_span("pdf.convert_pdfs_to_markdown") as span:
@@ -279,9 +281,7 @@ async def convert_pdf(
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(
-            process_pdfs, job_id, contents, filenames, vdb_task
-        )
+        background_tasks.add_task(process_pdfs, job_id, contents, filenames, vdb_task)
 
         return {"job_id": job_id}
 

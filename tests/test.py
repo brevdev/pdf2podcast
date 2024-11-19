@@ -217,7 +217,9 @@ def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=5
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
 
 
-def test_api(base_url: str, pdf_files: List[str], monologue: bool = False, vdb: bool = False):
+def test_api(
+    base_url: str, pdf_files: List[str], monologue: bool = False, vdb: bool = False
+):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
     }
@@ -316,6 +318,23 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False, vdb: 
 
         # Test saved podcasts endpoints with the newly created job_id
         test_saved_podcasts(base_url, job_id)
+
+        # Test RAG endpoint if vdb flag is enabled
+        if vdb:
+            print("\nTesting RAG endpoint...")
+            test_query = "What is the main topic of this document?"
+            rag_response = requests.post(
+                f"{base_url}/query_vector_db",
+                json={
+                    "query": test_query,
+                    "k": 3,
+                    "job_id": job_id
+                }
+            )
+            assert rag_response.status_code == 200, f"RAG endpoint failed: {rag_response.text}"
+            rag_results = rag_response.json()
+            print(f"RAG Query: '{test_query}'")
+            print(f"RAG Results: {json.dumps(rag_results, indent=2)}")
 
     finally:
         monitor.stop()

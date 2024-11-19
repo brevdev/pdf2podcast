@@ -10,7 +10,7 @@ from fastapi import (
     WebSocketDisconnect,
     Query,
 )
-from shared.api_types import ServiceType, JobStatus, StatusUpdate, TranscriptionParams
+from shared.api_types import ServiceType, JobStatus, StatusUpdate, TranscriptionParams, RAGRequest
 from shared.prompt_types import PromptTracker
 from shared.podcast_types import SavedPodcast, SavedPodcastWithAudio, Conversation
 from shared.connection import ConnectionManager
@@ -36,8 +36,8 @@ logger = logging.getLogger(__name__)
 # Initialize FastAPI app
 app = FastAPI(
     debug=True,
-    title="ARA API Service",
-    description="API Service for the ARA project",
+    title="AI Research Assistant API Service",
+    description="API Service for the AI Research Assistant project",
     docs_url="/docs",
     redoc_url="/redoc",
 )
@@ -661,38 +661,23 @@ async def delete_saved_podcast(
             )
 
 
-@app.post("/rag")
-async def rag(
-    payload: dict,
+@app.post("/query_vector_db")
+async def query_vector_db(
+    payload: RAGRequest,
 ):
-    """RAG endpoint that interfaces with NV-Ingest to retrieve top k results
-    
-    Expected payload format:
-    {
-        "query": "your search query",
-        "k": 3,
-        "job_id": "69220b71-3f0f-43cd-b5f4-24c98963d0bd"
-    }
-    """
-    with telemetry.tracer.start_as_current_span("api.rag") as span:
-        # Validate required fields
-        if not all(key in payload for key in ["query", "k", "job_id"]):
-            raise HTTPException(
-                status_code=400,
-                detail="Missing required fields. Please provide 'query', 'k', and 'job_id'"
-            )
+    """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
+    with telemetry.tracer.start_as_current_span("api.query_vector_db") as span:
+        span.set_attribute("job_id", payload.job_id)
+        span.set_attribute("k", payload.k)
 
-        span.set_attribute("query", payload["query"])
-        span.set_attribute("k", payload["k"])
-        
         async with httpx.AsyncClient(timeout=DEFAULT_TIMEOUT) as client:
             try:
                 response = await client.post(
                     f"{NV_INGEST_RETRIEVE_URL}/query",
                     json={
-                        "query": payload["query"],
-                        "k": payload["k"],
-                        "job_id": payload["job_id"],
+                        "query": payload.query,
+                        "k": payload.k,
+                        "job_id": payload.job_id,
                     },
                 )
                 if response.status_code != 200:
