@@ -217,7 +217,7 @@ def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=5
     print(f"Successfully retrieved audio data, size: {len(audio_data)} bytes")
 
 
-def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
+def test_api(base_url: str, pdf_files: List[str], monologue: bool = False, vdb: bool = False):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
     }
@@ -250,7 +250,8 @@ def test_api(base_url: str, pdf_files: List[str], monologue: bool = False):
         "voice_mapping": voice_mapping,
         "guide": None,
         "monologue": monologue,
-        "userId": TEST_USER_ID,  # Add userId to transcription params
+        "userId": TEST_USER_ID,
+        "vdb": vdb,  # Add VDB parameter
     }
 
     if not monologue:
@@ -335,11 +336,17 @@ if __name__ == "__main__":
         action="store_true",
         help="Generate a monologue instead of a dialogue",
     )
+    parser.add_argument(
+        "--vdb",
+        action="store_true",
+        help="Enable Vector Database processing",
+    )
 
     args = parser.parse_args()
     print(f"API URL: {args.api_url}")
     print(f"Processing PDF files: {args.pdf_files}")
     print(f"Monologue mode: {args.monologue}")
+    print(f"VDB mode: {args.vdb}")
     print(f"Using test user ID: {TEST_USER_ID}")
 
-    test_api(args.api_url, args.pdf_files, args.monologue)
+    test_api(args.api_url, args.pdf_files, args.monologue, args.vdb)
