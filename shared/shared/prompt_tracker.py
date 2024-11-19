@@ -2,7 +2,7 @@ from typing import Dict
 import time
 import logging
 from .storage import StorageManager
-from .shared_types import ProcessingStep, PromptTracker as PromptTrackerModel
+from .prompt_types import ProcessingStep, PromptTracker as PromptTrackerModel
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

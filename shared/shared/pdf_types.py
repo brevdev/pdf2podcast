@@ -1,4 +1,5 @@
 from pydantic import BaseModel, Field
+from typing import Optional
 from datetime import datetime
 from enum import Enum
 
@@ -12,7 +13,7 @@ class PDFConversionResult(BaseModel):
     filename: str
     content: str = ""
     status: ConversionStatus
-    error: str | None = None
+    error: Optional[str] = None
 
 
 class PDFMetadata(BaseModel):
@@ -20,5 +21,5 @@ class PDFMetadata(BaseModel):
     markdown: str = ""
     summary: str = ""
     status: ConversionStatus
-    error: str | None = None
+    error: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
