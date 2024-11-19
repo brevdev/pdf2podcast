@@ -10,7 +10,13 @@ from fastapi import (
     WebSocketDisconnect,
     Query,
 )
-from shared.api_types import ServiceType, JobStatus, StatusUpdate, TranscriptionParams, RAGRequest
+from shared.api_types import (
+    ServiceType,
+    JobStatus,
+    StatusUpdate,
+    TranscriptionParams,
+    RAGRequest,
+)
 from shared.prompt_types import PromptTracker
 from shared.podcast_types import SavedPodcast, SavedPodcastWithAudio, Conversation
 from shared.connection import ConnectionManager

@@ -325,13 +325,11 @@ def test_api(
             test_query = "What is the main topic of this document?"
             rag_response = requests.post(
                 f"{base_url}/query_vector_db",
-                json={
-                    "query": test_query,
-                    "k": 3,
-                    "job_id": job_id
-                }
+                json={"query": test_query, "k": 3, "job_id": job_id},
             )
-            assert rag_response.status_code == 200, f"RAG endpoint failed: {rag_response.text}"
+            assert (
+                rag_response.status_code == 200
+            ), f"RAG endpoint failed: {rag_response.text}"
             rag_results = rag_response.json()
             print(f"RAG Query: '{test_query}'")
             print(f"RAG Results: {json.dumps(rag_results, indent=2)}")

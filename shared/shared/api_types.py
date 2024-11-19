@@ -98,6 +98,7 @@ class TranscriptionRequest(TranscriptionParams):
     pdf_metadata: List[PDFMetadata]
     job_id: str
 
+
 class RAGRequest(BaseModel):
     query: str = Field(..., description="The search query to process")
     k: int = Field(..., description="Number of results to retrieve", ge=1)
