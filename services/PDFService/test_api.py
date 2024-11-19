@@ -2,7 +2,7 @@ import requests
 import os
 import time
 from typing import Optional, List
-from shared.shared_types import StatusResponse
+from shared.api_types import StatusResponse
 import sys
 from pathlib import Path
 

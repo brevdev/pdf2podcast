@@ -1,5 +1,4 @@
 from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, Form
-from shared.shared_types import ServiceType, JobStatus, StatusResponse
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
@@ -10,9 +9,8 @@ import logging
 import asyncio
 import ujson as json
 from typing import List
-from pydantic import BaseModel, Field
-from enum import Enum
-from datetime import datetime
+from shared.pdf_types import PDFConversionResult, ConversionStatus, PDFMetadata
+from shared.api_types import ServiceType, JobStatus, StatusResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -31,29 +29,10 @@ telemetry.initialize(config, app)
 job_manager = JobStatusManager(ServiceType.PDF, telemetry=telemetry)
 
 # Configuration
-MODEL_API_URL = os.getenv("MODEL_API_URL", "https://pdf-gyrdps568.brevlab.com")
+MODEL_API_URL = os.getenv(
+    "MODEL_API_URL", "https://nv-ingest-rest-endpoint.brevlab.com/v1"
+)
 DEFAULT_TIMEOUT = 600  # seconds
-
-
-class ConversionStatus(str, Enum):
-    SUCCESS = "success"
-    FAILED = "failed"
-
-
-class PDFConversionResult(BaseModel):
-    filename: str
-    content: str = ""
-    status: ConversionStatus
-    error: str | None = None
-
-
-class PDFMetadata(BaseModel):
-    filename: str
-    markdown: str = ""
-    summary: str = ""
-    status: ConversionStatus
-    error: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
 
 
 async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionResult]:

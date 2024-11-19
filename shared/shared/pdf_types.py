@@ -1,0 +1,24 @@
+from pydantic import BaseModel, Field
+from datetime import datetime
+from enum import Enum
+
+
+class ConversionStatus(str, Enum):
+    SUCCESS = "success"
+    FAILED = "failed"
+
+
+class PDFConversionResult(BaseModel):
+    filename: str
+    content: str = ""
+    status: ConversionStatus
+    error: str | None = None
+
+
+class PDFMetadata(BaseModel):
+    filename: str
+    markdown: str = ""
+    summary: str = ""
+    status: ConversionStatus
+    error: str | None = None
+    created_at: datetime = Field(default_factory=datetime.utcnow)
