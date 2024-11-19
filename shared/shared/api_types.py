@@ -1,12 +1,7 @@
 from pydantic import BaseModel, Field, model_validator
-from typing import Optional, Dict, List, Literal
+from typing import Optional, Dict, List
+from pdf_types import PDFMetadata
 from enum import Enum
-
-
-class ServiceType(str, Enum):
-    PDF = "pdf"
-    AGENT = "agent"
-    TTS = "tts"
 
 
 class JobStatus(str, Enum):
@@ -14,6 +9,12 @@ class JobStatus(str, Enum):
     PROCESSING = "processing"
     COMPLETED = "completed"
     FAILED = "failed"
+
+
+class ServiceType(str, Enum):
+    PDF = "pdf"
+    AGENT = "agent"
+    TTS = "tts"
 
 
 class StatusUpdate(BaseModel):
@@ -30,48 +31,6 @@ class StatusResponse(BaseModel):
     result: Optional[str] = None
     error: Optional[str] = None
     message: Optional[str] = None
-
-
-class SavedPodcast(BaseModel):
-    job_id: str
-    filename: str
-    created_at: str
-    size: int
-    transcription_params: Optional[Dict] = {}
-
-
-class SavedPodcastWithAudio(SavedPodcast):
-    audio_data: str
-
-
-# Transcript schema
-class DialogueEntry(BaseModel):
-    text: str
-    speaker: Literal["speaker-1", "speaker-2"]
-
-
-class Conversation(BaseModel):
-    scratchpad: str
-    dialogue: List[DialogueEntry]
-
-
-# Prompt tracker schema
-class ProcessingStep(BaseModel):
-    step_name: str
-    prompt: str
-    response: str
-    model: str
-    timestamp: float
-
-
-class PromptTracker(BaseModel):
-    steps: List[ProcessingStep]
-
-
-class PDFMetadata(BaseModel):
-    filename: str
-    markdown: str
-    summary: str = ""
 
 
 class TranscriptionParams(BaseModel):
@@ -134,24 +93,3 @@ class TranscriptionParams(BaseModel):
 class TranscriptionRequest(TranscriptionParams):
     pdf_metadata: List[PDFMetadata]
     job_id: str
-
-
-class SegmentPoint(BaseModel):
-    description: str
-
-
-class SegmentTopic(BaseModel):
-    title: str
-    points: List[SegmentPoint]
-
-
-class PodcastSegment(BaseModel):
-    section: str
-    topics: List[SegmentTopic]
-    duration: int
-    references: List[str]
-
-
-class PodcastOutline(BaseModel):
-    title: str
-    segments: List[PodcastSegment]

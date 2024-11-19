@@ -1,5 +1,5 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import ServiceType, JobStatus
+from shared.api_types import ServiceType, JobStatus
 from shared.job import JobStatusManager
 from fastapi.responses import Response
 from pydantic import BaseModel

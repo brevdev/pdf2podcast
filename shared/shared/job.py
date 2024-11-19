@@ -1,4 +1,4 @@
-from shared.shared_types import ServiceType
+from shared.api_types import ServiceType
 from shared.otel import OpenTelemetryInstrumentation
 import redis
 import time
