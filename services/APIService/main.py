@@ -663,7 +663,9 @@ async def delete_saved_podcast(
 
 @app.get("/rag")
 async def rag(
-    query: str, k: int = Query(..., description="Number of results to return")
+    query: str,
+    k: int = Query(..., description="Number of results to return"),
+    job_id: str = Query(..., description="Job ID"),
 ):
     """RAG endpoint that interfaces with NV-Ingest to retrieve top k results"""
     # hit the NV-Ingest endpoint with /query and pass in the query and k
@@ -674,7 +676,7 @@ async def rag(
             try:
                 response = await client.post(
                     f"{NV_INGEST_RETRIEVE_URL}/query",
-                    json={"query": query, "k": k},
+                    json={"query": query, "k": k, "job_id": job_id},
                 )
                 if response.status_code != 200:
                     span.set_status(
