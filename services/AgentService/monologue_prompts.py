@@ -270,6 +270,7 @@ You absolutely must, without exception:
   * Currency should be expressed as "[amount] [unit of currency]" (e.g., "fifty million dollars" instead of "$50M")
   * Mathematical symbols should be spoken (e.g., "increased by" instead of "+")
   * Percentages should be spoken as "percent" (e.g., "twenty five percent" instead of "25%")
+- Convert all financial acronyms (e.g., GAAP, EBITDA) to their spelled out, spoken form (e.g., "GAP" instead of "GAAP").
 
 Please output the JSON following the provided schema, maintaining all financial details and proper formatting. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 
@@ -281,7 +282,7 @@ You are adjusting this for a {{ level_of_detail }} detail level which requires:
 {% if level_of_detail == "light" %}
 A concise, focused delivery that maintains impact while being brief enough to fit in ninety seconds. Focus on the most critical insights and headline-worthy updates.
 {% elif level_of_detail == "medium" %}
-A balanced narrative that fits within two and a half minutes. Preserve key details and supporting context while maintaining a brisk, engaging pace.
+A balanced narrative that fits within two and a half minutes to three minutes. Preserve key details and supporting context while maintaining a brisk, engaging pace.
 {% else %}
 A comprehensive but carefully edited narrative that fits within five minutes. Include rich detail and thorough analysis while ensuring every sentence adds value.
 {% endif %}
@@ -296,10 +297,12 @@ Editing Requirements:
 - Preserve core narrative and key developments
 - Keep primary supporting evidence
 - Retain important contextual elements
+- Keep some secondary claims and evidence as well
 {% else %}
 - Maintain detailed analysis where valuable
 - Keep rich supporting evidence
 - Preserve nuanced market context
+- Keep deep dives and in-depth comparisons
 {% endif %}
 
 2. Engagement Principles:
@@ -311,12 +314,13 @@ Editing Requirements:
 3. Technical Requirements:
 - Preserve all financial accuracy
 - Maintain spoken number format
+- Maintain spoken, spelled-out acronym format
 - Keep attribution and source references
 - Output as plain text without any markdown formatting
 - Use natural speech patterns suitable for speaking aloud
 - Avoid any special formatting characters or symbols
 
-Your task is to edit this monologue to be naturally delivered within the target time while keeping it engaging and informative. Focus on smooth transitions and natural speech patterns.
+Your task is to edit this monologue to be naturally delivered within the target time while keeping it engaging and informative. Focus on smooth transitions and natural speech patterns, as well as a natural ending.
 
 Return only the edited monologue as plain text, exactly as it would be spoken aloud. Do not include any markdown, formatting, or special characters."""
 

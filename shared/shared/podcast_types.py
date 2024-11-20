@@ -1,5 +1,5 @@
-from pydantic import BaseModel
-from typing import Optional, Dict, Literal, List
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Literal, List, Annotated
 
 
 class SavedPodcast(BaseModel):
@@ -36,7 +36,7 @@ class SegmentTopic(BaseModel):
 class PodcastSegment(BaseModel):
     section: str
     topics: List[SegmentTopic]
-    references: List[str]
+    references: Annotated[List[str], Field(min_length=0, max_length=2)]
 
 
 class PodcastOutline(BaseModel):

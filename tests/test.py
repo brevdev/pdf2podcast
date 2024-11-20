@@ -250,7 +250,7 @@ def test_api(
         "level_of_detail": "medium",
         "speaker_1_name": "TJ",
         "voice_mapping": voice_mapping,
-        "guide": "Focus on NVIDIA's results in this quarter's earnings, and focus on what were the analyst reactions to those results.",
+        "guide": "Focus on NVIDIA's results in this quarter's earnings, and equally focus on what were the analyst reactions to those results.",
         "monologue": monologue,
         "userId": TEST_USER_ID,
         "vdb_task": vdb,

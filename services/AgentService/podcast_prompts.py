@@ -80,7 +80,7 @@ Convert the following outline into a structured JSON format. The final section s
 Output Requirements:
 1. Each segment must include:
    - section name
-   - list of references (file paths)
+   - list of references (file paths) [maximum of 2]
    - list of topics, where each topic has:
      - title
      - list of detailed points
