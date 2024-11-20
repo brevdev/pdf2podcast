@@ -247,10 +247,10 @@ def test_api(
     # Prepare the payload with updated schema and userId
     transcription_params = {
         "name": "ishan-test",
-        "level_of_detail": "light",
-        "speaker_1_name": "Bob",
+        "level_of_detail": "medium",
+        "speaker_1_name": "TJ",
         "voice_mapping": voice_mapping,
-        "guide": None,
+        "guide": "Focus on NVIDIA's results in this quarter's earnings, and focus on what were the analyst reactions to those results.",
         "monologue": monologue,
         "userId": TEST_USER_ID,
         "vdb_task": vdb,
