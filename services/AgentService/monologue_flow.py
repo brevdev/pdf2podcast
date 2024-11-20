@@ -13,11 +13,14 @@ import asyncio
 
 
 async def monologue_summarize_pdf(
-    pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker
+    pdf_metadata: PDFMetadata, llm_manager: LLMManager, prompt_tracker: PromptTracker, level_of_detail: str
 ) -> AIMessage:
     """Summarize a single PDF document"""
     template = FinancialSummaryPrompts.get_template("monologue_summary_prompt")
-    prompt = template.render(text=pdf_metadata.markdown)
+    prompt = template.render(
+        text=pdf_metadata.markdown,
+        level_of_detail=level_of_detail
+    )
 
     summary_response: AIMessage = await llm_manager.query_async(
         "reasoning",
@@ -39,6 +42,7 @@ async def monologue_summarize_pdfs(
     prompt_tracker: PromptTracker,
     job_manager: JobStatusManager,
     logger: logging.Logger,
+    level_of_detail: str,
 ) -> List[PDFMetadata]:
     """Summarize all PDFs in the request"""
     job_manager.update_status(
@@ -46,7 +50,7 @@ async def monologue_summarize_pdfs(
     )
 
     summaries: List[AIMessage] = await asyncio.gather(
-        *[monologue_summarize_pdf(pdf, llm_manager, prompt_tracker) for pdf in pdfs]
+        *[monologue_summarize_pdf(pdf, llm_manager, prompt_tracker, level_of_detail) for pdf in pdfs]
     )
 
     for pdf, summary in zip(pdfs, summaries):
@@ -79,6 +83,7 @@ async def monologue_generate_raw_outline(
     prompt = template.render(
         focus_instructions=request.guide if request.guide else None,
         documents="\n\n".join(documents),
+        level_of_detail=request.level_of_detail,
     )
 
     raw_outline: AIMessage = await llm_manager.query_async(
@@ -118,6 +123,7 @@ async def monologue_generate_monologue(
         if request.guide
         else "key financial metrics and performance indicators",
         speaker_1_name=request.speaker_1_name,
+        level_of_detail=request.level_of_detail,
     )
 
     monologue: AIMessage = await llm_manager.query_async(
@@ -135,6 +141,39 @@ async def monologue_generate_monologue(
 
     return monologue.content
 
+async def monologue_adjust_length(
+    monologue: str,
+    request: TranscriptionRequest,
+    llm_manager: LLMManager,
+    prompt_tracker: PromptTracker,
+    job_id: str,
+    job_manager: JobStatusManager,
+) -> str:
+    """Adjust monologue length based on detail level while maintaining engagement"""
+    job_manager.update_status(
+        job_id, JobStatus.PROCESSING, "Optimizing monologue length"
+    )
+
+    template = FinancialSummaryPrompts.get_template("monologue_length_adjustment_prompt")
+    prompt = template.render(
+        text=monologue,
+        level_of_detail=request.level_of_detail,
+    )
+
+    adjusted_monologue: AIMessage = await llm_manager.query_async(
+        "reasoning",
+        [{"role": "user", "content": prompt}],
+        "adjust_monologue_length",
+    )
+
+    prompt_tracker.track(
+        "adjust_monologue_length",
+        prompt,
+        llm_manager.model_configs["reasoning"].name,
+        adjusted_monologue.content,
+    )
+
+    return adjusted_monologue.content
 
 async def monologue_create_final_conversation(
     monologue: str,
@@ -155,6 +194,7 @@ async def monologue_create_final_conversation(
         speaker_1_name=request.speaker_1_name,
         text=monologue,
         schema=json.dumps(schema, indent=2),
+        level_of_detail=request.level_of_detail,
     )
 
     conversation_json: Dict = await llm_manager.query_async(

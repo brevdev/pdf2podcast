@@ -2,7 +2,7 @@ import jinja2
 from typing import Dict
 
 MONOLOGUE_SUMMARY_PROMPT_STR = """
-You are a financial executive at NVIDIA. Please provide a targeted analysis of the following financial document, focusing on: {{ focus }}
+You are presenting NVIDIA earning reports and analyses to a broad audience. Please provide a {{ level_of_detail }}-detail summary of the following financial document.
 
 <document>
 {{text}}
@@ -10,23 +10,58 @@ You are a financial executive at NVIDIA. Please provide a targeted analysis of t
 
 Requirements for the analysis:
 1. Essential Financial Information:
-  - Core financial metrics
-  - Performance indicators
-  - Growth rates and trends
-  - Market projections
-  - Strategic updates
+{% if level_of_detail == "light" %}
+  - High-level business trends and trajectory
+  - Strategic highlights and key shifts
+  - Critical performance indicators
+{% elif level_of_detail == "medium" %}
+  - Core financial metrics and trends
+  - Performance patterns and deviations
+  - Strategic initiatives and progress
+  - Market position indicators
+{% else %}
+  - Comprehensive financial analysis
+  - Detailed performance breakdowns
+  - Multi-dimensional trend analysis
+  - Strategic developments and implications
+  - Market dynamics and competitive positioning
+{% endif %}
 
 2. Document Context:
-  - Document type and purpose
-  - Relevant entities
-  - Time period covered
-  - Key stakeholders
+{% if level_of_detail == "light" %}
+  - Core context and relevance
+  - Primary stakeholder implications
+  - Essential timeline elements
+{% elif level_of_detail == "medium" %}
+  - Document purpose and scope
+  - Key stakeholder considerations
+  - Contextual background
+  - Relevant timelines and milestones
+{% else %}
+  - In-depth contextual analysis
+  - Stakeholder impact assessment
+  - Historical context and precedents
+  - Forward-looking implications
+  - Related strategic considerations
+{% endif %}
 
 3. Data Accuracy:
-  - Preserve exact numerical values
-  - Maintain specific dates
-  - Keep precise financial terminology
-  - Include verbatim risk disclosures when relevant
+{% if level_of_detail == "light" %}
+  - Focus on pivotal metrics
+  - Key milestone dates
+  - Essential financial terminology
+{% elif level_of_detail == "medium" %}
+  - Significant numerical data
+  - Important timeline elements
+  - Relevant financial terms
+  - Key risk considerations
+{% else %}
+  - Comprehensive data validation
+  - Detailed timeline tracking
+  - Technical terminology precision
+  - Risk factor analysis
+  - Source verification
+{% endif %}
 
 4. Text Conversion Requirements:
   - Write all numbers in word form (e.g., "one billion" not "1B")
@@ -35,13 +70,26 @@ Requirements for the analysis:
   - Spell out mathematical operations (e.g., "increased by" not "+")
   - Use proper Unicode characters
 
-Format the analysis using markdown with clear headers and bullet points. Be focused and specific, 
-Condense the information into metrics easily digestible on a audiobook format without making it stat/number heavy, focus more on the company's growth areas and trends.
-You are presenting to the board of directors. Speak in a way that is engaging and informative, but not too technical and speak in the first person.
+Format the analysis using markdown with clear headers and bullet points.
+{% if level_of_detail == "light" %}
+Focus on essential insights and core messages for quick strategic understanding.
+{% elif level_of_detail == "medium" %}
+Balance depth and accessibility while maintaining key financial context.
+{% else %}
+Provide thorough analysis while ensuring clarity in complex financial narratives.
+{% endif %}
+You are presenting to the entire company at a company meeting. Speak in a way that is engaging and informative, adding technicalities as needed to highlight performance, and speak in the first person.
 """
 
 MONOLOGUE_MULTI_DOC_SYNTHESIS_PROMPT_STR = """
-Create a structured monologue outline synthesizing the following document summaries. The monologue should be 30-45 seconds long.
+Create a structured monologue outline synthesizing the following document summaries.
+{% if level_of_detail == "light" %}
+Focus on essential highlights and critical strategic implications.
+{% elif level_of_detail == "medium" %}
+Provide balanced coverage of key findings and their interconnections.
+{% else %}
+Deliver comprehensive analysis with detailed supporting context.
+{% endif %}
 
 Focus Areas & Key Topics:
 {% if focus_instructions %}
@@ -55,21 +103,53 @@ Available Source Documents:
 
 Requirements:
 1. Content Strategy
-   - Prioritize topics according to focus instructions
-   - Identify key financial metrics and trends
-   - Analyze potential stakeholder concerns
-   - Draw connections between documents and focus areas
+{% if level_of_detail == "light" %}
+   - Concentrate on critical insights
+   - Focus on immediate implications
+   - Address core stakeholder priorities
+{% elif level_of_detail == "medium" %}
+   - Balance key themes and supporting data
+   - Examine relevant trends
+   - Consider stakeholder perspectives
+   - Highlight important connections
+{% else %}
+   - Deep dive into complex patterns
+   - Thorough analysis of implications
+   - Multiple stakeholder considerations
+   - Comprehensive synthesis
+{% endif %}
 
 2. Structure Requirements
-   - Create a clear narrative flow
-   - Balance depth vs breadth of coverage
-   - Ensure logical topic transitions
-   - Maintain financial accuracy and precision
+{% if level_of_detail == "light" %}
+   - Clear, direct narrative
+   - Essential context only
+   - Focused transitions
+{% elif level_of_detail == "medium" %}
+   - Balanced narrative flow
+   - Relevant supporting details
+   - Natural topic progression
+{% else %}
+   - Rich narrative development
+   - Detailed supporting evidence
+   - Sophisticated theme integration
+   - Nuanced transitions
+{% endif %}
 
-3. Time Management
-   - Allocate time based on topic importance
-   - Allow for natural pacing and emphasis
-   - Include brief pauses for key points
+3. Delivery Approach
+{% if level_of_detail == "light" %}
+   - Emphasis on key messages
+   - Strategic pacing
+   - Clear takeaways
+{% elif level_of_detail == "medium" %}
+   - Balanced information flow
+   - Natural rhythm
+   - Effective emphasis points
+{% else %}
+   - Comprehensive coverage
+   - Dynamic pacing
+   - Layered emphasis
+   - Thoughtful reflection points
+{% endif %}
 
 4. Text Formatting Requirements:
    - Write numbers in word form
@@ -77,7 +157,14 @@ Requirements:
    - Express percentages in spoken form
    - Write out mathematical operations
 
-Output a structured outline that synthesizes insights across all documents. This should be a concise, actionable summary."""
+Create an outline that effectively synthesizes insights across all documents.
+{% if level_of_detail == "light" %}
+Prioritize clarity and immediate relevance.
+{% elif level_of_detail == "medium" %}
+Balance comprehensiveness with accessibility.
+{% else %}
+Provide thorough analysis while maintaining engagement.
+{% endif %}"""
 
 MONOLOGUE_TRANSCRIPT_PROMPT_STR = """
 Create a focused financial update based on this outline and source documents.
@@ -101,24 +188,44 @@ Focus Areas: {{ focus }}
 Parameters:
 - Level of detail: {{ level_of_detail }}
 - Speaker: {{ speaker_1_name }}
-- Structure: Follow the outline while maintaining:
-  * Opening (5-7 words)
-  * Key points from outline (60-70 words)
-  * Supporting evidence (15-20 words)
-  * Conclusion (10-15 words)
+{% if level_of_detail == "light" %}
+- Structure: Concise opening, essential points, key evidence, clear conclusion
+{% elif level_of_detail == "medium" %}
+- Structure: Clear opening, key points with context, supporting evidence, comprehensive conclusion
+{% else %}
+- Structure: Detailed opening, thorough analysis, extensive evidence, nuanced conclusion
+{% endif %}
 
 Requirements:
 1. Speech Pattern
-   - Use broadcast-style delivery
-   - Natural pauses and emphasis
-   - Professional but conversational tone
-   - Clear source attribution
+{% if level_of_detail == "light" %}
+   - Direct and impactful delivery
+   - Strategic emphasis
+   - Clear attribution of key points
+{% elif level_of_detail == "medium" %}
+   - Natural, engaging delivery
+   - Balanced emphasis
+   - Clear sourcing and context
+{% else %}
+   - Rich, detailed delivery
+   - Layered emphasis structure
+   - Comprehensive attribution
+{% endif %}
 
 2. Content Structure
-   - Follow the provided outline
-   - Maintain logical flow between points
-   - Support key claims with evidence
-   - End with a clear takeaway
+{% if level_of_detail == "light" %}
+   - Essential narrative elements
+   - Core supporting points
+   - Clear conclusions
+{% elif level_of_detail == "medium" %}
+   - Developed narrative flow
+   - Balanced supporting evidence
+   - Contextual conclusions
+{% else %}
+   - Complex narrative development
+   - Multiple evidence layers
+   - Nuanced implications
+{% endif %}
 
 3. Text Formatting:
    - All numbers in word form
@@ -126,7 +233,7 @@ Requirements:
    - Percentages in spoken form
    - Mathematical operations written out
 
-Create a concise, engaging monologue that follows the outline while delivering essential financial information."""
+Create a monologue that effectively communicates financial information appropriate to the detail level."""
 
 MONOLOGUE_DIALOGUE_PROMPT_STR = """You are tasked with converting a financial monologue into a structured JSON format. You have:
 
@@ -145,6 +252,14 @@ Your task is to:
 - Map all content to "speaker-1"
 - Maintain all financial data accuracy
 
+{% if level_of_detail == "light" %}
+Focus on essential data points while ensuring accuracy and clarity.
+{% elif level_of_detail == "medium" %}
+Balance completeness with accessibility while maintaining precision.
+{% else %}
+Ensure thorough preservation of details and nuanced information.
+{% endif %}
+
 You absolutely must, without exception:
 - Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
 - Ensure all apostrophes, quotes, and special characters are properly formatted
@@ -159,11 +274,56 @@ You absolutely must, without exception:
 
 Please output the JSON following the provided schema, maintaining all financial details and proper formatting. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
 
+MONOLOGUE_LENGTH_ADJUSTMENT_PROMPT_STR = """You are an expert financial podcast editor skilled at preserving key information while adjusting content length. Review and adjust this financial monologue:
+
+{{ text }}
+
+You are adjusting this for a {{ level_of_detail }} detail level which requires:
+{% if level_of_detail == "light" %}
+A concise, focused delivery that maintains impact while being brief enough to fit in ninety seconds. Focus on the most critical insights and headline-worthy updates.
+{% elif level_of_detail == "medium" %}
+A balanced narrative that fits within two and a half minutes. Preserve key details and supporting context while maintaining a brisk, engaging pace.
+{% else %}
+A comprehensive but carefully edited narrative that fits within five minutes. Include rich detail and thorough analysis while ensuring every sentence adds value.
+{% endif %}
+
+Editing Requirements:
+1. Content Priorities
+{% if level_of_detail == "light" %}
+- Keep only the most impactful insights
+- Focus on headline metrics and major shifts
+- Maintain only essential context
+{% elif level_of_detail == "medium" %}
+- Preserve core narrative and key developments
+- Keep primary supporting evidence
+- Retain important contextual elements
+{% else %}
+- Maintain detailed analysis where valuable
+- Keep rich supporting evidence
+- Preserve nuanced market context
+{% endif %}
+
+2. Engagement Principles:
+- Start with a hook that captures attention
+- Use dynamic pacing to maintain interest
+- Create natural flow between topics
+- End with clear, memorable takeaways
+
+3. Technical Requirements:
+- Preserve all financial accuracy
+- Maintain spoken number format
+- Keep attribution and source references
+
+Your task is to edit this monologue to be naturally delivered within the target time while keeping it engaging and informative. Focus on smooth transitions and natural speech patterns.
+
+Return only the edited monologue, maintaining all formatting."""
+
 PROMPT_TEMPLATES = {
     "monologue_summary_prompt": MONOLOGUE_SUMMARY_PROMPT_STR,
     "monologue_multi_doc_synthesis_prompt": MONOLOGUE_MULTI_DOC_SYNTHESIS_PROMPT_STR,
     "monologue_transcript_prompt": MONOLOGUE_TRANSCRIPT_PROMPT_STR,
     "monologue_dialogue_prompt": MONOLOGUE_DIALOGUE_PROMPT_STR,
+    "monologue_length_adjustment_prompt": MONOLOGUE_LENGTH_ADJUSTMENT_PROMPT_STR
 }
 
 # Create Jinja templates once

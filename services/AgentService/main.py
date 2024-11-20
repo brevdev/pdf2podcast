@@ -18,6 +18,7 @@ from monologue_flow import (
     monologue_summarize_pdfs,
     monologue_generate_raw_outline,
     monologue_generate_monologue,
+    monologue_adjust_length,
     monologue_create_final_conversation,
 )
 from shared.storage import StorageManager
@@ -97,9 +98,19 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                     job_manager,
                 )
 
+                # Cut down monologue to appropriate length
+                adjusted_monologue = await monologue_adjust_length(
+                    monologue,
+                    request,
+                    llm_manager,
+                    prompt_tracker,
+                    job_id,
+                    job_manager,
+                )
+
                 # Create final conversation
                 final_conversation = await monologue_create_final_conversation(
-                    monologue, request, llm_manager, prompt_tracker, job_id, job_manager
+                    adjusted_monologue, request, llm_manager, prompt_tracker, job_id, job_manager
                 )
 
                 # Store result
