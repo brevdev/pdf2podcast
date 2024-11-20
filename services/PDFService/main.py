@@ -9,7 +9,7 @@ import logging
 import asyncio
 import ujson as json
 from typing import List
-from shared.pdf_types import PDFConversionResult, ConversionStatus, PDFMetadata
+from shared.pdf_types import PDFConversionResult, ConversionStatus, PDFMetadata, FileContentTuple
 from shared.api_types import ServiceType, JobStatus, StatusResponse
 
 logging.basicConfig(level=logging.INFO)
@@ -153,22 +153,22 @@ async def convert_pdfs_to_markdown(
                 )
 
 
-async def process_pdfs(
-    job_id: str, contents: List[bytes], filenames: List[str], vdb_task: bool = False
+async def convert_pdfs(
+    job_id: str, files: List[FileContentTuple], vdb_task: bool = False
 ):
     """Process multiple PDFs and return metadata for each"""
-    with telemetry.tracer.start_as_current_span("pdf.process_pdfs") as span:
+    with telemetry.tracer.start_as_current_span("pdf.convert_pdfs") as span:
         try:
             logger.info(
-                f"Starting PDF processing for job {job_id} with {len(contents)} files"
+                f"Starting PDF processing for job {job_id} with {len(files)} files"
             )
             job_manager.update_status(
-                job_id, JobStatus.PROCESSING, f"Processing {len(contents)} PDFs"
+                job_id, JobStatus.PROCESSING, f"Processing {len(files)} PDFs"
             )
 
             # Create temporary files for all PDFs
             temp_files = []
-            for i, content in enumerate(contents):
+            for i, (content, type) in enumerate(files):
                 try:
                     with tempfile.NamedTemporaryFile(
                         delete=False, suffix=".pdf"
@@ -176,7 +176,7 @@ async def process_pdfs(
                         temp_file.write(content)
                         temp_files.append(temp_file.name)
                         logger.debug(
-                            f"Created temp file {temp_file.name} for PDF {i+1}/{len(contents)}"
+                            f"Created temp file {temp_file.name} for PDF {i+1}/{len(files)}"
                         )
                 except Exception as e:
                     logger.error(
@@ -194,23 +194,24 @@ async def process_pdfs(
 
                 # Create metadata list
                 pdf_metadata_list = []
-                for filename, result in zip(filenames, results):
+                for i, (result, (_, type)) in enumerate(zip(results, files)):
                     try:
                         metadata = PDFMetadata(
-                            filename=filename,
+                            filename=f"file_{i}.pdf",
                             markdown=result.content
                             if result.status == ConversionStatus.SUCCESS
                             else "",
+                            type=type,
                             status=result.status,
                             error=result.error,
                         )
                         pdf_metadata_list.append(metadata)
                         logger.debug(
-                            f"Created metadata for {filename}: status={result.status}"
+                            f"Created metadata for file_{i}.pdf: status={result.status}"
                         )
                     except Exception as e:
                         logger.error(
-                            f"Failed to create metadata for {filename}: {str(e)}"
+                            f"Failed to create metadata for file_{i}.pdf: {str(e)}"
                         )
                         raise
 
@@ -256,7 +257,7 @@ async def process_pdfs(
 @app.post("/convert", status_code=202)
 async def convert_pdf(
     background_tasks: BackgroundTasks,
-    files: List[UploadFile] = File(...),
+    files: List[FileContentTuple],
     job_id: str = Form(...),
     vdb_task: bool = Form(False),
 ):
@@ -269,19 +270,11 @@ async def convert_pdf(
                 raise HTTPException(status_code=400, detail="All files must be PDFs")
             span.set_attribute(f"file_{file.filename}_size", file.size)
 
-        # Read all file contents and filenames
-        contents = []
-        filenames = []
-        for file in files:
-            content = await file.read()
-            contents.append(content)
-            filenames.append(file.filename)
-
         span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(process_pdfs, job_id, contents, filenames, vdb_task)
+        background_tasks.add_task(convert_pdfs, job_id, files, vdb_task)
 
         return {"job_id": job_id}
 

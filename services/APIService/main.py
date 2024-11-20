@@ -19,6 +19,7 @@ from shared.api_types import (
 )
 from shared.prompt_types import PromptTracker
 from shared.podcast_types import SavedPodcast, SavedPodcastWithAudio, Conversation
+from shared.pdf_types import PDFFileUpload, FileContentTuple
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
@@ -34,7 +35,7 @@ import os
 import logging
 import time
 import asyncio
-from typing import Dict, List, Union
+from typing import Dict, List, Union, Annotated
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -96,7 +97,6 @@ app.add_middleware(
     max_age=3600,
 )
 logger.info(f"CORS configured with allowed origins: {allowed_origins}")
-
 
 @app.websocket("/ws/status/{job_id}")
 async def websocket_endpoint(websocket: WebSocket, job_id: str):
@@ -163,7 +163,7 @@ async def websocket_endpoint(websocket: WebSocket, job_id: str):
 
 def process_pdf_task(
     job_id: str,
-    files_content: List[bytes],
+    files: List[FileContentTuple],
     transcription_params: TranscriptionParams,
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf_task") as span:
@@ -173,7 +173,7 @@ def process_pdf_task(
             pubsub.subscribe("status_updates:all")
 
             # Store all original PDFs
-            for idx, content in enumerate(files_content):
+            for idx, (content, _) in enumerate(files):
                 storage_manager.store_file(
                     transcription_params.userId,
                     job_id,
@@ -183,15 +183,8 @@ def process_pdf_task(
                     transcription_params,
                 )
             logger.info(
-                f"Stored {len(files_content)} original PDFs for {job_id} in storage"
+                f"Stored {len(files)} original PDFs for {job_id} in storage"
             )
-
-            # Send all PDFs to PDF Service
-            files = [
-                ("files", (f"file_{i}.pdf", content, "application/pdf"))
-                for i, content in enumerate(files_content)
-            ]
-
             logger.info(
                 f"Sending {len(files)} PDFs to PDF Service for {job_id} with VDB task: {transcription_params.vdb_task}"
             )
@@ -296,19 +289,30 @@ def process_pdf_task(
 @app.post("/process_pdf", status_code=202)
 async def process_pdf(
     background_tasks: BackgroundTasks,
-    files: Union[UploadFile, List[UploadFile]] = File(...),
+    files: Annotated[Union[PDFFileUpload, List[PDFFileUpload]], File(...)],
     transcription_params: str = Form(...),
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf") as span:
         # Convert single file to list for consistent handling
-        files_list = [files] if isinstance(files, UploadFile) else files
+        files = [files] if isinstance(files, PDFFileUpload) else files
 
         span.set_attribute("request", transcription_params)
-        span.set_attribute("num_files", len(files_list))
+        span.set_attribute("num_files", len(files))
+        if len(files) == 1 and files[0].type != "target":
+            raise HTTPException(
+                status_code=400,
+                detail="Single file must be designated as 'target'"
+            )
 
+        # Ensure at least one target file
+        if not any(f.type == "target" for f in files):
+            raise HTTPException(
+                status_code=400,
+                detail="At least one file must be designated as 'target'"
+            )
         # Validate all files are PDFs
-        for file in files_list:
-            if file.content_type != "application/pdf":
+        for file in files:
+            if file.file.content_type != "application/pdf":
                 span.set_status(
                     status=StatusCode.ERROR, description="invalid file type"
                 )
@@ -329,13 +333,13 @@ async def process_pdf(
         span.set_attribute("job_id", job_id)
 
         # Read all files
-        files_content = []
-        for file in files_list:
-            content = await file.read()
-            files_content.append(content)
+        files_data: List[FileContentTuple] = []
+        for file_upload, file_type in files:
+            content = await file_upload.file.read()
+            files_data.append((content, file_type))
 
         # Start processing
-        background_tasks.add_task(process_pdf_task, job_id, files_content, params)
+        background_tasks.add_task(process_pdf_task, job_id, files_data, params)
         span.set_status(status=StatusCode.OK)
 
         return {"job_id": job_id}
