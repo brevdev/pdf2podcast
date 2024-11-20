@@ -13,18 +13,15 @@ def test_transcribe_api():
 
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
-        filename="sample.pdf",
-        markdown="Sample markdown content",
-        summary="",
-        type="target",
+        filename="sample.pdf", markdown="Sample markdown content", summary=""
     )
 
     pdf_metadata_2 = PDFMetadata(
-        filename="sample2.pdf", markdown="Sample markdown content 2", summary="context"
+        filename="sample2.pdf", markdown="Sample markdown content 2", summary=""
     )
 
     pdf_metadata_3 = PDFMetadata(
-        filename="sample3.pdf", markdown="Sample markdown content 3", summary="target"
+        filename="sample3.pdf", markdown="Sample markdown content 3", summary=""
     )
 
     request = TranscriptionRequest(

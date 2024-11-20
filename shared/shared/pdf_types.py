@@ -1,6 +1,5 @@
-from fastapi import UploadFile
 from pydantic import BaseModel, Field
-from typing import Optional, Union, Literal, Tuple
+from typing import Optional, Union, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -21,11 +20,7 @@ class PDFMetadata(BaseModel):
     filename: str
     markdown: str = ""
     summary: str = ""
-    type: Union[Literal["target"], Literal["context"]]
     status: ConversionStatus
+    type: Union[Literal["target"], Literal["context"]]
     error: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-FileTypeTuple = Tuple[UploadFile, Literal["target", "context"]]
-FileContentTuple = Tuple[bytes, Literal["target", "context"]]
