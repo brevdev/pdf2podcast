@@ -274,18 +274,18 @@ async def convert_pdf(
         # Read all file contents and filenames
         contents = []
         filenames = []
-        types = []
+        file_types = []
         for file, type in zip(files, types):
             content = await file.read()
             contents.append(content)
             filenames.append(file.filename)
-            types.append(type)
+            file_types.append(type)
 
         span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(convert_pdfs, job_id, contents, filenames, types, vdb_task)
+        background_tasks.add_task(convert_pdfs, job_id, contents, filenames, file_types, vdb_task)
 
         return {"job_id": job_id}
 
