@@ -76,6 +76,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                     prompt_tracker,
                     job_manager,
                     logger,
+                    level_of_detail=request.level_of_detail
                 )
 
                 # Generate raw outline

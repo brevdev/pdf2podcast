@@ -70,7 +70,6 @@ Requirements for the analysis:
   - Spell out mathematical operations (e.g., "increased by" not "+")
   - Use proper Unicode characters
 
-Format the analysis using markdown with clear headers and bullet points.
 {% if level_of_detail == "light" %}
 Focus on essential insights and core messages for quick strategic understanding.
 {% elif level_of_detail == "medium" %}
@@ -313,10 +312,13 @@ Editing Requirements:
 - Preserve all financial accuracy
 - Maintain spoken number format
 - Keep attribution and source references
+- Output as plain text without any markdown formatting
+- Use natural speech patterns suitable for speaking aloud
+- Avoid any special formatting characters or symbols
 
 Your task is to edit this monologue to be naturally delivered within the target time while keeping it engaging and informative. Focus on smooth transitions and natural speech patterns.
 
-Return only the edited monologue, maintaining all formatting."""
+Return only the edited monologue as plain text, exactly as it would be spoken aloud. Do not include any markdown, formatting, or special characters."""
 
 PROMPT_TEMPLATES = {
     "monologue_summary_prompt": MONOLOGUE_SUMMARY_PROMPT_STR,
