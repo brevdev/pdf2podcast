@@ -173,7 +173,7 @@ def process_pdf_task(
             pubsub.subscribe("status_updates:all")
 
             # Store all original PDFs
-            for idx, content in enumerate(files_and_types):
+            for idx, (content, _) in enumerate(files_and_types):
                 storage_manager.store_file(
                     transcription_params.userId,
                     job_id,
@@ -200,8 +200,7 @@ def process_pdf_task(
             requests.post(
                 f"{PDF_SERVICE_URL}/convert",
                 files=files,
-                types=types,
-                data={"job_id": job_id, "vdb_task": transcription_params.vdb_task},
+                data={"types": types, "job_id": job_id, "vdb_task": transcription_params.vdb_task},
             )
 
             # Monitor services
