@@ -9,7 +9,12 @@ import logging
 import asyncio
 import ujson as json
 from typing import List
-from shared.pdf_types import PDFConversionResult, ConversionStatus, PDFMetadata, FileContentTuple
+from shared.pdf_types import (
+    PDFConversionResult,
+    ConversionStatus,
+    PDFMetadata,
+    FileContentTuple,
+)
 from shared.api_types import ServiceType, JobStatus, StatusResponse
 
 logging.basicConfig(level=logging.INFO)

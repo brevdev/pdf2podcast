@@ -8,7 +8,7 @@ import websockets
 import asyncio
 from urllib.parse import urljoin
 import argparse
-from typing import List
+from typing import List, Tuple
 
 # Add global TEST_USER_ID
 TEST_USER_ID = "test-userid"
@@ -218,7 +218,10 @@ def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=5
 
 
 def test_api(
-    base_url: str, pdf_files: List[str], monologue: bool = False, vdb: bool = False
+    base_url: str,
+    pdf_files_with_types: List[Tuple[str, str]],
+    monologue: bool = False,
+    vdb: bool = False,
 ):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
@@ -230,19 +233,18 @@ def test_api(
     process_url = f"{base_url}/process_pdf"
 
     # Update path resolution
-    current_dir = os.path.dirname(
-        os.path.abspath(__file__)
-    )  # This gets /tests directory
-    project_root = os.path.dirname(current_dir)  # Go up one level to project root
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
     samples_dir = os.path.join(project_root, "samples")
 
-    # Rest of the path handling remains the same
-    sample_pdf_paths = []
-    for pdf_file in pdf_files:
+    sample_pdf_paths_with_types = []
+    for pdf_file, file_type in pdf_files_with_types:
         if os.path.isabs(pdf_file):
-            sample_pdf_paths.append(pdf_file)
+            sample_pdf_paths_with_types.append((pdf_file, file_type))
         else:
-            sample_pdf_paths.append(os.path.join(samples_dir, pdf_file))
+            sample_pdf_paths_with_types.append(
+                (os.path.join(samples_dir, pdf_file), file_type)
+            )
 
     # Prepare the payload with updated schema and userId
     transcription_params = {
@@ -265,30 +267,40 @@ def test_api(
     )
     print(f"Using voices: {voice_mapping}")
 
-    pdf_files = [open(path, "rb") for path in sample_pdf_paths]
-    try:
-        files = [
-            ("files", (os.path.basename(path), pdf_file, "application/pdf"))
-            for path, pdf_file in zip(sample_pdf_paths, pdf_files)
-        ]
+    # Prepare multipart form data
+    form_data = []
+    file_types = []
 
-        response = requests.post(
-            process_url,
-            files=files,
-            data={"transcription_params": json.dumps(transcription_params)},
-        )
+    # Add each file to the form data
+    for path, file_type in sample_pdf_paths_with_types:
+        with open(path, "rb") as pdf_file:
+            content = pdf_file.read()
+            form_data.append(
+                ("files", (os.path.basename(path), content, "application/pdf"))
+            )
+            file_types.append(file_type)
+
+    # Add the file types as separate form fields
+    for file_type in file_types:
+        form_data.append(("file_types", (None, file_type)))
+
+    # Add transcription parameters
+    form_data.append(("transcription_params", (None, json.dumps(transcription_params))))
+
+    try:
+        response = requests.post(process_url, files=form_data)
 
         assert (
             response.status_code == 202
-        ), f"Expected status code 202, but got {response.status_code}"
+        ), f"Expected status code 202, but got {response.status_code}. Response: {response.text}"
         job_data = response.json()
         assert "job_id" in job_data, "Response missing job_id"
         job_id = job_data["job_id"]
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Job ID received: {job_id}")
 
-    finally:
-        for f in pdf_files:
-            f.close()
+    except Exception as e:
+        print(f"Error during PDF submission: {e}")
+        raise
 
     # Step 2: Start monitoring status via WebSocket
     monitor = StatusMonitor(base_url, job_id)
@@ -340,9 +352,29 @@ def test_api(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Process PDF files for audio conversion"
+        description="Process PDF files for audio conversion",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+        Examples:
+        # Process single file (defaults to context)
+        python test.py file1.pdf
+
+        # Process single file as target
+        python test.py file1.pdf target
+
+        # Process multiple files with explicit types
+        python test.py file1.pdf target file2.pdf context file3.pdf context
+
+        # Process multiple files (defaulting to context)
+        python test.py file1.pdf target file2.pdf file3.pdf
+        """,
     )
-    parser.add_argument("pdf_files", nargs="+", help="PDF files to process")
+
+    parser.add_argument(
+        "files",
+        nargs="+",
+        help="PDF files and their types (optional). Format: <file> [type] <file> [type] ...",
+    )
     parser.add_argument(
         "--api-url",
         default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
@@ -360,10 +392,25 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # Process the files argument to pair files with their types
+    pdf_files_with_types = []
+    i = 0
+    while i < len(args.files):
+        pdf_file = args.files[i]
+        # Check if next argument is a type specification
+        if i + 1 < len(args.files) and args.files[i + 1] in ["target", "context"]:
+            file_type = args.files[i + 1]
+            i += 2
+        else:
+            file_type = "context"  # default type
+            i += 1
+        pdf_files_with_types.append((pdf_file, file_type))
+
     print(f"API URL: {args.api_url}")
-    print(f"Processing PDF files: {args.pdf_files}")
+    print(f"Processing PDF files: {pdf_files_with_types}")
     print(f"Monologue mode: {args.monologue}")
     print(f"VDB mode: {args.vdb}")
     print(f"Using test user ID: {TEST_USER_ID}")
 
-    test_api(args.api_url, args.pdf_files, args.monologue, args.vdb)
+    test_api(args.api_url, pdf_files_with_types, args.monologue, args.vdb)

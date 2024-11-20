@@ -1,8 +1,9 @@
-from fastapi import UploadFile, Form, File
+from fastapi import UploadFile
 from pydantic import BaseModel, Field
 from typing import Optional, Union, Literal, Tuple
 from datetime import datetime
 from enum import Enum
+
 
 class ConversionStatus(str, Enum):
     SUCCESS = "success"
@@ -25,14 +26,6 @@ class PDFMetadata(BaseModel):
     error: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)
 
-class PDFFileUpload:
-    def __init__(
-        self,
-        file: UploadFile = File(...),
-        type: Literal["target", "context"] = Form(...)
-    ):
-        self.file = file
-        self.type = type
 
 FileTypeTuple = Tuple[UploadFile, Literal["target", "context"]]
 FileContentTuple = Tuple[bytes, Literal["target", "context"]]

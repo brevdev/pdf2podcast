@@ -19,7 +19,7 @@ from shared.api_types import (
 )
 from shared.prompt_types import PromptTracker
 from shared.podcast_types import SavedPodcast, SavedPodcastWithAudio, Conversation
-from shared.pdf_types import PDFFileUpload, FileContentTuple
+from shared.pdf_types import FileContentTuple
 from shared.connection import ConnectionManager
 from shared.storage import StorageManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
@@ -35,7 +35,7 @@ import os
 import logging
 import time
 import asyncio
-from typing import Dict, List, Union, Annotated
+from typing import Dict, List
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -97,6 +97,7 @@ app.add_middleware(
     max_age=3600,
 )
 logger.info(f"CORS configured with allowed origins: {allowed_origins}")
+
 
 @app.websocket("/ws/status/{job_id}")
 async def websocket_endpoint(websocket: WebSocket, job_id: str):
@@ -182,9 +183,12 @@ def process_pdf_task(
                     "application/pdf",
                     transcription_params,
                 )
-            logger.info(
-                f"Stored {len(files)} original PDFs for {job_id} in storage"
-            )
+            logger.info(f"Stored {len(files)} original PDFs for {job_id} in storage")
+            files_for_request = []
+            for idx, (content, file_type) in enumerate(files):
+                files_for_request.append(
+                    ("files", (f"file_{idx}.pdf", content, "application/pdf"))
+                )
             logger.info(
                 f"Sending {len(files)} PDFs to PDF Service for {job_id} with VDB task: {transcription_params.vdb_task}"
             )
@@ -289,30 +293,35 @@ def process_pdf_task(
 @app.post("/process_pdf", status_code=202)
 async def process_pdf(
     background_tasks: BackgroundTasks,
-    files: Annotated[Union[PDFFileUpload, List[PDFFileUpload]], File(...)],
+    files: List[UploadFile] = File(...),
+    file_types: List[str] = Form(...),
     transcription_params: str = Form(...),
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf") as span:
-        # Convert single file to list for consistent handling
-        files = [files] if isinstance(files, PDFFileUpload) else files
+        if len(files) != len(file_types):
+            raise HTTPException(
+                status_code=400,
+                detail="Number of files must match number of file types",
+            )
 
         span.set_attribute("request", transcription_params)
         span.set_attribute("num_files", len(files))
-        if len(files) == 1 and files[0].type != "target":
+
+        if len(files) == 1 and file_types[0] != "target":
             raise HTTPException(
-                status_code=400,
-                detail="Single file must be designated as 'target'"
+                status_code=400, detail="Single file must be designated as 'target'"
             )
 
         # Ensure at least one target file
-        if not any(f.type == "target" for f in files):
+        if not any(ft == "target" for ft in file_types):
             raise HTTPException(
                 status_code=400,
-                detail="At least one file must be designated as 'target'"
+                detail="At least one file must be designated as 'target'",
             )
+
         # Validate all files are PDFs
         for file in files:
-            if file.file.content_type != "application/pdf":
+            if file.content_type != "application/pdf":
                 span.set_status(
                     status=StatusCode.ERROR, description="invalid file type"
                 )
@@ -334,8 +343,8 @@ async def process_pdf(
 
         # Read all files
         files_data: List[FileContentTuple] = []
-        for file_upload, file_type in files:
-            content = await file_upload.file.read()
+        for file, file_type in zip(files, file_types):
+            content = await file.read()
             files_data.append((content, file_type))
 
         # Start processing
