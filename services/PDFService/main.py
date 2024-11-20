@@ -154,7 +154,11 @@ async def convert_pdfs_to_markdown(
 
 
 async def convert_pdfs(
-    job_id: str, contents: List[bytes], filenames: List[str], types: List[str], vdb_task: bool = False
+    job_id: str,
+    contents: List[bytes],
+    filenames: List[str],
+    types: List[str],
+    vdb_task: bool = False,
 ):
     """Process multiple PDFs and return metadata for each"""
     with telemetry.tracer.start_as_current_span("pdf.convert_pdfs") as span:
@@ -285,7 +289,9 @@ async def convert_pdf(
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(convert_pdfs, job_id, contents, filenames, file_types, vdb_task)
+        background_tasks.add_task(
+            convert_pdfs, job_id, contents, filenames, file_types, vdb_task
+        )
 
         return {"job_id": job_id}
 

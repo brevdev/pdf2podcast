@@ -193,14 +193,17 @@ def process_pdf_task(
                 files.append(("files", (f"file_{i}.pdf", content, "application/pdf")))
                 types.append(type)
 
-
             logger.info(
                 f"Sending {len(files)} PDFs to PDF Service for {job_id} with VDB task: {transcription_params.vdb_task}"
             )
             requests.post(
                 f"{PDF_SERVICE_URL}/convert",
                 files=files,
-                data={"types": types, "job_id": job_id, "vdb_task": transcription_params.vdb_task},
+                data={
+                    "types": types,
+                    "job_id": job_id,
+                    "vdb_task": transcription_params.vdb_task,
+                },
             )
 
             # Monitor services
