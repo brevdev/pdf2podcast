@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, Form
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Form
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode

@@ -75,7 +75,7 @@ async def podcast_generate_raw_outline(
     for pdf in summarized_pdfs:
         doc_str = f"""
         <document>
-        <is_important>true</is_important>
+        <type>{"Target Document" if pdf.type == "target" else "Context Document"}</type>
         <path>{pdf.filename}</path>
         <summary>
         {pdf.summary}
