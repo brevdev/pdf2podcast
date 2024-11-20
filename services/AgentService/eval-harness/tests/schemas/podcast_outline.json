@@ -13,15 +13,15 @@
           "title": "Descriptions",
           "type": "array"
         },
-        "duration": {
-          "title": "Duration",
-          "type": "integer"
+        "level_of_detail": {
+          "title": "Level of Detail",
+          "type": "string"
         }
       },
       "required": [
         "section",
         "descriptions",
-        "duration"
+        "level_of_detail"
       ],
       "title": "PodcastSegment",
       "type": "object"

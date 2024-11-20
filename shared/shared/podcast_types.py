@@ -36,7 +36,6 @@ class SegmentTopic(BaseModel):
 class PodcastSegment(BaseModel):
     section: str
     topics: List[SegmentTopic]
-    duration: int
     references: List[str]
 
 

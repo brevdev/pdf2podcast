@@ -15,7 +15,7 @@ def test(base_url: str):
     # Prepare the payload
     transcription_params = {
         "name": "ishan-test",
-        "duration": 5,
+        "level_of_detail": "light",
         "speaker_1_name": "Blackwell",
         "speaker_2_name": "Hopper",
         "model": "meta/llama-3.1-405b-instruct",

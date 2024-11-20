@@ -23,5 +23,5 @@ providers:
 
 tests:
   - vars:
-      duration: 10
+      level_of_detail: "light"
       text: file://./eval.txt

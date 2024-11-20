@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field, model_validator
-from typing import Optional, Dict, List
+from typing import Optional, Dict, List, Union, Literal
 from .pdf_types import PDFMetadata
 from enum import Enum
 
@@ -35,10 +35,10 @@ class StatusResponse(BaseModel):
 
 class TranscriptionParams(BaseModel):
     userId: str = Field(..., description="KAS User ID")
-    name: str = Field(..., description="Name of the podcast")
-    duration: int = Field(..., description="Duration in minutes")
+    name: str = Field(..., description="Name of the generation")
+    level_of_detail: Union[Literal["light"], Literal["medium"], Literal["heavy"]] = Field(..., description="Level of detail to include in the generation.")
     monologue: bool = Field(
-        False, description="If True, creates a single-speaker podcast"
+        False, description="If True, creates a monologue instead of a podcast."
     )
     speaker_1_name: str = Field(
         ..., description="Name of the speaker (or first speaker if not monologue)"

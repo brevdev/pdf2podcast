@@ -70,7 +70,6 @@ Requirements:
    - Allocate time based on topic importance
    - Allow for natural pacing and emphasis
    - Include brief pauses for key points
-   - Stay within total duration
 
 4. Text Formatting Requirements:
    - Write numbers in word form
@@ -100,7 +99,7 @@ Available Source Documents:
 Focus Areas: {{ focus }}
 
 Parameters:
-- Duration: 30 seconds (~90 words)
+- Level of detail: {{ level_of_detail }}
 - Speaker: {{ speaker_1_name }}
 - Structure: Follow the outline while maintaining:
   * Opening (5-7 words)

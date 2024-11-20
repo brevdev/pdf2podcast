@@ -36,7 +36,7 @@ Note: Focus on extracting and organizing the most essential information while en
 """
 
 PODCAST_MULTI_PDF_OUTLINE_PROMPT_STR = """
-Create a structured podcast outline synthesizing the following document summaries. The podcast should be {{total_duration}} minutes long.
+Create a structured podcast outline synthesizing the following document summaries. The podcast should have a {{ level_of_detail }} level of detail.
 
 Focus Areas & Key Topics:
 {% if focus_instructions %}
@@ -80,7 +80,6 @@ Convert the following outline into a structured JSON format. The final section s
 Output Requirements:
 1. Each segment must include:
    - section name
-   - duration (in minutes) representing the length of the segment
    - list of references (file paths)
    - list of topics, where each topic has:
      - title
@@ -93,8 +92,6 @@ Output Requirements:
 3. Important notes:
    - References must be chosen from this list of valid filenames: {{ valid_filenames }}
    - References should only appear in the segment's "references" array, not as a topic
-   - Duration represents the length of each segment, not its starting timestamp
-   - Each segment's duration should be a positive number
 
 The result must conform to the following JSON schema:
 {{ schema }}
@@ -107,7 +104,7 @@ Source Text:
 {{ text }}
 
 Parameters:
-- Duration: {{ duration }} minutes (~{{ (duration * 180) | int }} words)
+- Level of detail: {{ level_of_detail }}
 - Topic: {{ topic }}
 - Focus Areas: {{ angles }}
 
@@ -133,7 +130,7 @@ PODCAST_PROMPT_NO_REFERENCES_STR = """
 Create a knowledge-based transcript following this outline:
 
 Parameters:
-- Duration: {{ duration }} minutes (~{{ (duration * 180) | int }} words)
+- Level of detail: {{ level_of_detail }}
 - Topic: {{ topic }}
 - Focus Areas: {{ angles }}
 
@@ -207,7 +204,7 @@ There are two speakers:
 
 **Segment Details:**
 
-- Duration: Approximately {{ duration }} minutes (~{{ (duration * 180) | int }} words).
+- Level of detail: {{ level_of_detail }}
 - Topic: {{ descriptions }}
 
 You should keep all analogies, stories, examples, and quotes from the transcript.

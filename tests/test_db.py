@@ -11,7 +11,7 @@ from typing import Dict
 @dataclass
 class TranscriptionParams:
     name: str
-    duration: int
+    level_of_detail: str
     speaker_1_name: str
     speaker_2_name: str
     model: str
@@ -95,7 +95,7 @@ def test_storage_manager():
     test_filename = f"{test_job_id}.mp3"
     test_transcription_params = TranscriptionParams(
         name="Test Podcast",
-        duration=5,
+        level_of_detail="light",
         speaker_1_name="John",
         speaker_2_name="Jane",
         model="test-model",

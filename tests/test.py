@@ -247,7 +247,7 @@ def test_api(
     # Prepare the payload with updated schema and userId
     transcription_params = {
         "name": "ishan-test",
-        "duration": 5,
+        "level_of_detail": "light",
         "speaker_1_name": "Bob",
         "voice_mapping": voice_mapping,
         "guide": None,

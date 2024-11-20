@@ -85,7 +85,6 @@ async def podcast_generate_raw_outline(
 
     template = PodcastPrompts.get_template("podcast_multi_pdf_outline_prompt")
     prompt = template.render(
-        total_duration=request.duration,
         focus_instructions=request.guide if request.guide else None,
         documents="\n\n".join(documents),
     )
@@ -179,7 +178,7 @@ async def podcast_process_segment(
 
     # Prepare prompt parameters
     prompt_params = {
-        "duration": segment.duration,
+        "level_of_detail": segment.level_of_detail,
         "topic": segment.section,
         "angles": "\n".join([topic.title for topic in segment.topics]),
     }
@@ -263,7 +262,7 @@ async def podcast_generate_dialogue_segment(
     template = PodcastPrompts.get_template("podcast_transcript_to_dialogue_prompt")
     prompt = template.render(
         text=segment_text,
-        duration=segment.duration,
+        level_of_detail=segment.level_of_detail,
         descriptions=topics_text,
         speaker_1_name=request.speaker_1_name,
         speaker_2_name=request.speaker_2_name,

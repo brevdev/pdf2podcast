@@ -27,7 +27,7 @@ def test_transcribe_api():
     request = TranscriptionRequest(
         # TranscriptionParams fields
         name="Test Podcast",
-        duration=2,  # Duration in minutes
+        level_of_detail="light",
         speaker_1_name="Host",
         speaker_2_name="Guest",
         voice_mapping={
