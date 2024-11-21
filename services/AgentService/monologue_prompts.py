@@ -2,7 +2,7 @@ import jinja2
 from typing import Dict
 
 MONOLOGUE_SUMMARY_PROMPT_STR = """
-You are presenting NVIDIA earning reports and analyses to a broad audience. Please provide a {{ level_of_detail }}-detail summary of the following financial document.
+You are presenting NVIDIA earning reports and analyses at a company meeting. Please provide a {{ level_of_detail }}-detail summary of the following financial document.
 
 <document>
 {{text}}
@@ -63,13 +63,6 @@ Requirements for the analysis:
   - Source verification
 {% endif %}
 
-4. Text Conversion Requirements:
-  - Write all numbers in word form (e.g., "one billion" not "1B")
-  - Express currency as "[amount] [unit]" (e.g., "fifty million dollars")
-  - Write percentages in spoken form (e.g., "twenty five percent")
-  - Spell out mathematical operations (e.g., "increased by" not "+")
-  - Use proper Unicode characters
-
 {% if level_of_detail == "light" %}
 Focus on essential insights and core messages for quick strategic understanding.
 {% elif level_of_detail == "medium" %}
@@ -77,192 +70,109 @@ Balance depth and accessibility while maintaining key financial context.
 {% else %}
 Provide thorough analysis while ensuring clarity in complex financial narratives.
 {% endif %}
-You are presenting to the entire company at a company meeting. Speak in a way that is engaging and informative, adding technicalities as needed to highlight performance, and speak in the first person.
 """
 
-MONOLOGUE_MULTI_DOC_SYNTHESIS_PROMPT_STR = """
-Create a structured monologue outline synthesizing the following document summaries.
-{% if level_of_detail == "light" %}
-Focus on essential highlights and critical strategic implications.
-{% elif level_of_detail == "medium" %}
-Provide balanced coverage of key findings and their interconnections.
-{% else %}
-Deliver comprehensive analysis with detailed supporting context.
-{% endif %}
+MONOLOGUE_OUTLINE_PROMPT_STR = """
+Create a structured outline based on the following focus areas and document summaries.
 
-Focus Areas & Key Topics:
-{% if focus_instructions %}
-{{focus_instructions}}
-{% else %}
-Use your judgment to identify and prioritize the most important financial themes, metrics, and insights across all documents.
-{% endif %}
-
-Available Source Documents:
-{{documents}}
-
-Requirements:
-1. Content Strategy
-{% if level_of_detail == "light" %}
-   - Concentrate on critical insights
-   - Focus on immediate implications
-   - Address core stakeholder priorities
-{% elif level_of_detail == "medium" %}
-   - Balance key themes and supporting data
-   - Examine relevant trends
-   - Consider stakeholder perspectives
-   - Highlight important connections
-{% else %}
-   - Deep dive into complex patterns
-   - Thorough analysis of implications
-   - Multiple stakeholder considerations
-   - Comprehensive synthesis
-{% endif %}
-
-2. Structure Requirements
-{% if level_of_detail == "light" %}
-   - Clear, direct narrative
-   - Essential context only
-   - Focused transitions
-{% elif level_of_detail == "medium" %}
-   - Balanced narrative flow
-   - Relevant supporting details
-   - Natural topic progression
-{% else %}
-   - Rich narrative development
-   - Detailed supporting evidence
-   - Sophisticated theme integration
-   - Nuanced transitions
-{% endif %}
-
-3. Delivery Approach
-{% if level_of_detail == "light" %}
-   - Emphasis on key messages
-   - Strategic pacing
-   - Clear takeaways
-{% elif level_of_detail == "medium" %}
-   - Balanced information flow
-   - Natural rhythm
-   - Effective emphasis points
-{% else %}
-   - Comprehensive coverage
-   - Dynamic pacing
-   - Layered emphasis
-   - Thoughtful reflection points
-{% endif %}
-
-4. Text Formatting Requirements:
-   - Write numbers in word form
-   - Format currency as "[amount] [unit]"
-   - Express percentages in spoken form
-   - Write out mathematical operations
-
-Create an outline that effectively synthesizes insights across all documents.
-{% if level_of_detail == "light" %}
-Prioritize clarity and immediate relevance.
-{% elif level_of_detail == "medium" %}
-Balance comprehensiveness with accessibility.
-{% else %}
-Provide thorough analysis while maintaining engagement.
-{% endif %}"""
-
-MONOLOGUE_TRANSCRIPT_PROMPT_STR = """
-Create a focused financial update based on this outline and source documents.
-
-Outline:
-{{ raw_outline }}
+Focus Instructions:
+{{focus}}
 
 Available Source Documents:
 {% for doc in documents %}
 <document>
 <is_important>true</is_important>
-<path>{{doc.filename}}</path>
-<summary>
-{{doc.summary}}
-</summary>
+<filename>{{doc.filename}}</filename>
+<summary>{{doc.summary}}</summary>
 </document>
 {% endfor %}
 
-Focus Areas: {{ focus }}
+Requirements:
+1. Structure
+- Create distinct segments based on the focus instructions
+- Each segment should include:
+  * A clear title
+  * Key topics to cover
+  * List of documents filenames, from the source documents, to use as reference.
+
+2. Content Organization
+{% if level_of_detail == "light" %}
+   - Keep segments brief and focused
+   - Emphasize critical insights
+   - Target 2-3 key topics per segment
+{% elif level_of_detail == "medium" %}
+   - Balance detail and brevity
+   - Include supporting context
+   - Target 3-4 key topics per segment
+{% else %}
+   - Provide comprehensive coverage
+   - Include detailed analysis
+   - Target 4-5 key topics per segment
+{% endif %}
+
+The outline should follow the structure and flow specified in the focus instructions while incorporating relevant information from all documents.
+"""
+
+OUTLINE_JSON_FORMATTER_PROMPT_STR = """
+Convert this outline into a structured JSON format following the provided schema.
+
+Outline:
+{{outline}}
+
+Schema:
+{{schema}}
+
+Requirements:
+Structure
+- Follow the provided schema exactly
+- Preserve all segment information:
+  * Titles
+  * Key points
+  * Document references
+  * Target durations
+
+Output only the formatted JSON following the provided schema: {{ schema }}"""
+
+SEGMENT_TRANSCRIPT_PROMPT_STR = """
+Create a spoken transcript for this outline segment using the referenced documents.
+
+Segment Information:
+{{segment}}
+
+Referenced Documents:
+{% for doc in referenced_docs %}
+<document>
+<is_important>true</is_important>
+<filename>{{doc.filename}}</filename>
+<summary>{{doc.summary}}</summary>
+</document>
+{% endfor %}
 
 Parameters:
 - Level of detail: {{ level_of_detail }}
 - Speaker: {{ speaker_1_name }}
-{% if level_of_detail == "light" %}
-- Structure: Concise opening, essential points, key evidence, clear conclusion
-{% elif level_of_detail == "medium" %}
-- Structure: Clear opening, key points with context, supporting evidence, comprehensive conclusion
-{% else %}
-- Structure: Detailed opening, thorough analysis, extensive evidence, nuanced conclusion
-{% endif %}
 
 Requirements:
-1. Speech Pattern
+1. Content Structure
 {% if level_of_detail == "light" %}
-   - Direct and impactful delivery
-   - Strategic emphasis
-   - Clear attribution of key points
+   - Direct and concise delivery
+   - Essential points only
+   - Clear transitions
 {% elif level_of_detail == "medium" %}
-   - Natural, engaging delivery
-   - Balanced emphasis
-   - Clear sourcing and context
+   - Balanced detail and flow
+   - Key supporting evidence
+   - Natural transitions
 {% else %}
-   - Rich, detailed delivery
-   - Layered emphasis structure
-   - Comprehensive attribution
+   - Rich detail and context
+   - Comprehensive evidence
+   - Sophisticated transitions
 {% endif %}
 
-2. Content Structure
-{% if level_of_detail == "light" %}
-   - Essential narrative elements
-   - Core supporting points
-   - Clear conclusions
-{% elif level_of_detail == "medium" %}
-   - Developed narrative flow
-   - Balanced supporting evidence
-   - Contextual conclusions
-{% else %}
-   - Complex narrative development
-   - Multiple evidence layers
-   - Nuanced implications
-{% endif %}
-
-3. Text Formatting:
-   - All numbers in word form
-   - Currency as "[amount] [unit]"
-   - Percentages in spoken form
-   - Mathematical operations written out
-
-Create a monologue that effectively communicates financial information appropriate to the detail level."""
-
-MONOLOGUE_DIALOGUE_PROMPT_STR = """You are tasked with converting a financial monologue into a structured JSON format. You have:
-
-1. Speaker information:
-   - Speaker: {{ speaker_1_name }} (mapped to "speaker-1")
-
-2. The original monologue:
-{{ text }}
-
-3. Required output schema:
-{{ schema }}
-
-Your task is to:
-- Convert the monologue exactly into the specified JSON format 
-- Preserve all content without any omissions
-- Map all content to "speaker-1"
-- Maintain all financial data accuracy
-
-{% if level_of_detail == "light" %}
-Focus on essential data points while ensuring accuracy and clarity.
-{% elif level_of_detail == "medium" %}
-Balance completeness with accessibility while maintaining precision.
-{% else %}
-Ensure thorough preservation of details and nuanced information.
-{% endif %}
-
-You absolutely must, without exception:
-- Use proper Unicode characters directly (e.g., use ' instead of \\u2019)
-- Ensure all apostrophes, quotes, and special characters are properly formatted
-- Do not escape Unicode characters in the output
+2. Speaking Style
+- Natural, conversational tone
+- Clear pronunciation of financial terms
+- Appropriate pacing for target length
+- Smooth transitions from previous segments
 
 You absolutely must, without exception:
 - Convert all numbers and symbols to spoken form:
@@ -272,64 +182,120 @@ You absolutely must, without exception:
   * Percentages should be spoken as "percent" (e.g., "twenty five percent" instead of "25%")
 - Convert all financial acronyms (e.g., GAAP, EBITDA) to their spelled out, spoken form (e.g., "GAP" instead of "GAAP").
 
-Please output the JSON following the provided schema, maintaining all financial details and proper formatting. The output should use proper Unicode characters directly, not escaped sequences. Do not output anything besides the JSON."""
+Create a transcript segment that flows naturally with the rest of the presentation while effectively communicating the financial information."""
 
-MONOLOGUE_LENGTH_ADJUSTMENT_PROMPT_STR = """You are an expert financial podcast editor skilled at preserving key information while adjusting content length. Review and adjust this financial monologue:
+TRANSCRIPT_MERGER_PROMPT_STR = """
+Merge these segment transcripts into a cohesive presentation while maintaining natural flow and transitions.
+
+Segments:
+{{segments}}
+
+Requirements:
+1. Structure
+{% if level_of_detail == "light" %}
+   - Quick, impactful transitions
+   - Maintain momentum
+   - Clear progression
+{% elif level_of_detail == "medium" %}
+   - Smooth, natural transitions
+   - Balanced pacing
+   - Logical flow
+{% else %}
+   - Sophisticated transitions
+   - Dynamic pacing
+   - Complex narrative structure
+{% endif %}
+
+2. Content Integration
+- Ensure smooth flow between segments
+- Maintain consistent voice and tone
+- Add transitional phrases where needed
+- Preserve all key financial information
+
+You absolutely must, without exception:
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one billion" instead of "1B")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "fifty million dollars" instead of "$50M")
+  * Mathematical symbols should be spoken (e.g., "increased by" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "twenty five percent" instead of "25%")
+- Convert all financial acronyms (e.g., GAAP, EBITDA) to their spelled out, spoken form (e.g., "GAP" instead of "GAAP").
+
+Create a unified transcript that flows naturally while maintaining the integrity of each segment."""
+
+TRANSCRIPT_LENGTH_ADJUSTMENT_PROMPT_STR = """
+Adjust this transcript to match the target length while preserving key information:
 
 {{ text }}
 
-You are adjusting this for a {{ level_of_detail }} detail level which requires:
+Target length for {{ level_of_detail }} detail level:
 {% if level_of_detail == "light" %}
-A concise, focused delivery that maintains impact while being brief enough to fit in ninety seconds. Focus on the most critical insights and headline-worthy updates.
+Ninety seconds - focus on headlines and critical updates
 {% elif level_of_detail == "medium" %}
-A balanced narrative that fits within two and a half minutes to three minutes. Preserve key details and supporting context while maintaining a brisk, engaging pace.
+Two and a half to three minutes - balance key details and context
 {% else %}
-A comprehensive but carefully edited narrative that fits within five minutes. Include rich detail and thorough analysis while ensuring every sentence adds value.
+Five minutes - maintain rich detail while ensuring efficiency
 {% endif %}
 
 Editing Requirements:
 1. Content Priorities
 {% if level_of_detail == "light" %}
-- Keep only the most impactful insights
-- Focus on headline metrics and major shifts
-- Maintain only essential context
+- Essential insights only
+- Headline metrics
+- Critical context
 {% elif level_of_detail == "medium" %}
-- Preserve core narrative and key developments
-- Keep primary supporting evidence
-- Retain important contextual elements
-- Keep some secondary claims and evidence as well
+- Key developments
+- Primary evidence
+- Important context
 {% else %}
-- Maintain detailed analysis where valuable
-- Keep rich supporting evidence
-- Preserve nuanced market context
-- Keep deep dives and in-depth comparisons
+- Detailed analysis
+- Rich evidence
+- Market context
 {% endif %}
 
-2. Engagement Principles:
-- Start with a hook that captures attention
-- Use dynamic pacing to maintain interest
-- Create natural flow between topics
-- End with clear, memorable takeaways
+You absolutely must, without exception:
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one billion" instead of "1B")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "fifty million dollars" instead of "$50M")
+  * Mathematical symbols should be spoken (e.g., "increased by" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "twenty five percent" instead of "25%")
+- Convert all financial acronyms (e.g., GAAP, EBITDA) to their spelled out, spoken form (e.g., "GAP" instead of "GAAP").
 
-3. Technical Requirements:
-- Preserve all financial accuracy
-- Maintain spoken number format
-- Maintain spoken, spelled-out acronym format
-- Keep attribution and source references
-- Output as plain text without any markdown formatting
-- Use natural speech patterns suitable for speaking aloud
-- Avoid any special formatting characters or symbols
+Return only the edited transcript as it would be spoken."""
 
-Your task is to edit this monologue to be naturally delivered within the target time while keeping it engaging and informative. Focus on smooth transitions and natural speech patterns, as well as a natural ending.
+TRANSCRIPT_FORMATTING_PROMPT_STR = """Convert this transcript into the specified JSON format:
 
-Return only the edited monologue as plain text, exactly as it would be spoken aloud. Do not include any markdown, formatting, or special characters."""
+Speaker information:
+- Speaker: {{ speaker_1_name }} (mapped to "speaker-1")
+
+Transcript:
+{{ text }}
+
+Output schema:
+{{ schema }}
+
+Requirements:
+- Preserve all content exactly
+- Map all content to "speaker-1"
+- Maintain all formatting standards
+
+You absolutely must, without exception:
+- Convert all numbers and symbols to spoken form:
+  * Numbers should be spelled out (e.g., "one billion" instead of "1B")
+  * Currency should be expressed as "[amount] [unit of currency]" (e.g., "fifty million dollars" instead of "$50M")
+  * Mathematical symbols should be spoken (e.g., "increased by" instead of "+")
+  * Percentages should be spoken as "percent" (e.g., "twenty five percent" instead of "25%")
+- Convert all financial acronyms (e.g., GAAP, EBITDA) to their spelled out, spoken form (e.g., "GAP" instead of "GAAP").
+
+Output only the formatted JSON."""
 
 PROMPT_TEMPLATES = {
     "monologue_summary_prompt": MONOLOGUE_SUMMARY_PROMPT_STR,
-    "monologue_multi_doc_synthesis_prompt": MONOLOGUE_MULTI_DOC_SYNTHESIS_PROMPT_STR,
-    "monologue_transcript_prompt": MONOLOGUE_TRANSCRIPT_PROMPT_STR,
-    "monologue_dialogue_prompt": MONOLOGUE_DIALOGUE_PROMPT_STR,
-    "monologue_length_adjustment_prompt": MONOLOGUE_LENGTH_ADJUSTMENT_PROMPT_STR
+    "monologue_outline_prompt": MONOLOGUE_OUTLINE_PROMPT_STR,
+    "outline_json_formatter": OUTLINE_JSON_FORMATTER_PROMPT_STR,
+    "segment_transcript_prompt": SEGMENT_TRANSCRIPT_PROMPT_STR,
+    "transcript_merger_prompt": TRANSCRIPT_MERGER_PROMPT_STR,
+    "transcript_length_adjustment_prompt": TRANSCRIPT_LENGTH_ADJUSTMENT_PROMPT_STR,
+    "transcript_formatting_prompt": TRANSCRIPT_FORMATTING_PROMPT_STR
 }
 
 # Create Jinja templates once
