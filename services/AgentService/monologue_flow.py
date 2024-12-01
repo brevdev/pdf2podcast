@@ -179,6 +179,7 @@ async def monologue_create_final_conversation(
 
     return Conversation.model_validate(conversation_json)
 
+
 def unescape_unicode_string(s: str) -> str:
     """Convert escaped Unicode sequences to actual Unicode characters"""
     # This handles both raw strings (with extra backslashes) and regular strings
