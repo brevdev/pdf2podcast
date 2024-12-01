@@ -6,7 +6,7 @@ export
 DETACH ?= 0
 
 # Version for production deployment
-VERSION := 2.3
+VERSION := 4.2
 
 # Docker registry and project
 REGISTRY := nvcr.io/pfteb4cqjzrs/playground
@@ -50,6 +50,11 @@ dev: check_env
 		mkdir -p data/minio; \
 	fi
 	docker compose down
+	@if [ -z "$(MODEL_API_URL)" ]; then \
+		echo "$(GREEN)USING NV-INGEST$(NC)"; \
+	else \
+		echo "$(GREEN)USING DOCLING$(NC)"; \
+	fi
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
 		docker compose -f docker-compose.yaml --env-file .env up --build -d; \
@@ -70,6 +75,11 @@ prod: check_env
 		mkdir -p data/minio; \
 	fi
 	docker compose down
+	@if [ -z "$(MODEL_API_URL)" ]; then \
+		echo "$(GREEN)USING NV-INGEST$(NC)"; \
+	else \
+		echo "$(GREEN)USING DOCLING$(NC)"; \
+	fi
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up
 

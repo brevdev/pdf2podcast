@@ -1,5 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException
-from shared.shared_types import ServiceType, JobStatus, StatusResponse
+from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, Form
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
@@ -7,13 +6,11 @@ import httpx
 import tempfile
 import os
 import logging
-import time
 import asyncio
 import ujson as json
-from typing import Optional, List
-from pydantic import BaseModel, Field
-from enum import Enum
-from datetime import datetime
+from typing import List
+from shared.pdf_types import PDFConversionResult, ConversionStatus, PDFMetadata
+from shared.api_types import ServiceType, JobStatus, StatusResponse
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -32,32 +29,15 @@ telemetry.initialize(config, app)
 job_manager = JobStatusManager(ServiceType.PDF, telemetry=telemetry)
 
 # Configuration
-MODEL_API_URL = os.getenv("MODEL_API_URL", "https://pdf-gyrdps568.brevlab.com")
+MODEL_API_URL = os.getenv(
+    "MODEL_API_URL", "https://nv-ingest-rest-endpoint.brevlab.com/v1"
+)
 DEFAULT_TIMEOUT = 600  # seconds
 
 
-class ConversionStatus(str, Enum):
-    SUCCESS = "success"
-    FAILED = "failed"
-
-
-class PDFConversionResult(BaseModel):
-    filename: str
-    content: str = ""
-    status: ConversionStatus
-    error: str | None = None
-
-
-class PDFMetadata(BaseModel):
-    filename: str
-    markdown: str = ""
-    summary: str = ""
-    status: ConversionStatus
-    error: str | None = None
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-
-
-async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionResult]:
+async def convert_pdfs_to_markdown(
+    pdf_paths: List[str], job_id: str, vdb_task: bool = False
+) -> List[PDFConversionResult]:
     """Convert multiple PDFs to Markdown using the external API service"""
     logger.info(f"Sending {len(pdf_paths)} PDFs to external conversion service")
     with telemetry.tracer.start_as_current_span("pdf.convert_pdfs_to_markdown") as span:
@@ -80,7 +60,9 @@ async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionRe
                     span.set_attribute("model_api_url", MODEL_API_URL)
                     logger.info(f"Sending {len(files)} files to model API")
                     response = await client.post(
-                        f"{MODEL_API_URL}/convert", files=files
+                        f"{MODEL_API_URL}/convert",
+                        files=files,
+                        data={"job_id": job_id, "vdb_task": vdb_task},
                     )
                 finally:
                     # Clean up file handles after request is complete
@@ -171,7 +153,9 @@ async def convert_pdfs_to_markdown(pdf_paths: List[str]) -> List[PDFConversionRe
                 )
 
 
-async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str]):
+async def process_pdfs(
+    job_id: str, contents: List[bytes], filenames: List[str], vdb_task: bool = False
+):
     """Process multiple PDFs and return metadata for each"""
     with telemetry.tracer.start_as_current_span("pdf.process_pdfs") as span:
         try:
@@ -205,7 +189,7 @@ async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str])
                     f"Starting PDF to Markdown conversion for {len(temp_files)} files"
                 )
                 # Convert all PDFs in a single batch
-                results = await convert_pdfs_to_markdown(temp_files)
+                results = await convert_pdfs_to_markdown(temp_files, job_id, vdb_task)
                 logger.info(f"Conversion completed, processing {len(results)} results")
 
                 # Create metadata list
@@ -273,11 +257,13 @@ async def process_pdfs(job_id: str, contents: List[bytes], filenames: List[str])
 async def convert_pdf(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
-    job_id: Optional[str] = None,
+    job_id: str = Form(...),
+    vdb_task: bool = Form(False),
 ):
     """Convert multiple PDFs to Markdown"""
     with telemetry.tracer.start_as_current_span("pdf.convert_pdf") as span:
         # Validate all files are PDFs
+        span.set_attribute("job_id", job_id)
         for file in files:
             if file.content_type != "application/pdf":
                 raise HTTPException(status_code=400, detail="All files must be PDFs")
@@ -291,16 +277,11 @@ async def convert_pdf(
             contents.append(content)
             filenames.append(file.filename)
 
-        # Create job
-        if not job_id:
-            job_id = str(int(time.time()))
-
-        span.set_attribute("job_id", job_id)
         span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(process_pdfs, job_id, contents, filenames)
+        background_tasks.add_task(process_pdfs, job_id, contents, filenames, vdb_task)
 
         return {"job_id": job_id}
 

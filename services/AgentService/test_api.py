@@ -2,7 +2,8 @@ import requests
 import ujson as json
 import os
 import time
-from shared.shared_types import TranscriptionRequest, PDFMetadata
+from shared.api_types import TranscriptionRequest
+from shared.pdf_types import PDFMetadata
 
 
 def test_transcribe_api():

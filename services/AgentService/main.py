@@ -1,11 +1,10 @@
 from fastapi import FastAPI, BackgroundTasks, HTTPException
-from shared.shared_types import (
+from shared.api_types import (
     ServiceType,
     JobStatus,
-    Conversation,
-    TranscriptionRequest,
-    PodcastOutline,
 )
+from shared.podcast_types import Conversation, PodcastOutline
+from shared.api_types import TranscriptionRequest
 from podcast_flow import (
     podcast_summarize_pdfs,
     podcast_generate_raw_outline,
@@ -60,7 +59,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 config_path=os.getenv("MODEL_CONFIG_PATH"),
             )
             span.set_attribute("model_config_path", os.getenv("MODEL_CONFIG_PATH"))
-            prompt_tracker = PromptTracker(job_id, storage_manager)
+            prompt_tracker = PromptTracker(job_id, request.userId, storage_manager)
 
             # Initialize processing
             job_manager.update_status(
@@ -79,7 +78,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Generate raw outline
-                raw_outline = monologue_generate_raw_outline(
+                raw_outline = await monologue_generate_raw_outline(
                     summarized_pdfs,
                     request,
                     llm_manager,
@@ -89,7 +88,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Generate monologue
-                monologue = monologue_generate_monologue(
+                monologue = await monologue_generate_monologue(
                     raw_outline,
                     request,
                     llm_manager,
@@ -99,7 +98,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Create final conversation
-                final_conversation = monologue_create_final_conversation(
+                final_conversation = await monologue_create_final_conversation(
                     monologue, request, llm_manager, prompt_tracker, job_id, job_manager
                 )
 
@@ -123,7 +122,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Generate initial outline
-                raw_outline = podcast_generate_raw_outline(
+                raw_outline = await podcast_generate_raw_outline(
                     summarized_pdfs,
                     request,
                     llm_manager,
@@ -134,7 +133,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Convert outline to structured format
-                outline: PodcastOutline = podcast_generate_structured_outline(
+                outline: PodcastOutline = await podcast_generate_structured_outline(
                     raw_outline,
                     request,
                     llm_manager,
@@ -168,7 +167,7 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Combine transcripts iteratively
-                combined_dialogues = podcast_combine_dialogues(
+                combined_dialogues = await podcast_combine_dialogues(
                     segment_dialogues,
                     outline,
                     llm_manager,
@@ -179,14 +178,16 @@ async def process_transcription(job_id: str, request: TranscriptionRequest):
                 )
 
                 # Create final conversation by formatting as JSON
-                final_conversation: Conversation = podcast_create_final_conversation(
-                    combined_dialogues,
-                    request,
-                    llm_manager,
-                    prompt_tracker,
-                    job_id,
-                    job_manager,
-                    logger,
+                final_conversation: Conversation = (
+                    await podcast_create_final_conversation(
+                        combined_dialogues,
+                        request,
+                        llm_manager,
+                        prompt_tracker,
+                        job_id,
+                        job_manager,
+                        logger,
+                    )
                 )
                 # Store result
                 job_manager.set_result_with_expiration(

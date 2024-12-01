@@ -1,9 +1,6 @@
-from shared.shared_types import (
-    JobStatus,
-    Conversation,
-    PDFMetadata,
-    TranscriptionRequest,
-)
+from shared.api_types import JobStatus, TranscriptionRequest
+from shared.podcast_types import Conversation
+from shared.pdf_types import PDFMetadata
 from shared.llmmanager import LLMManager
 from shared.job import JobStatusManager
 from typing import List, Dict
@@ -60,7 +57,7 @@ async def monologue_summarize_pdfs(
     return pdfs
 
 
-def monologue_generate_raw_outline(
+async def monologue_generate_raw_outline(
     summarized_pdfs: List[PDFMetadata],
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -84,7 +81,7 @@ def monologue_generate_raw_outline(
         documents="\n\n".join(documents),
     )
 
-    raw_outline: AIMessage = llm_manager.query_sync(
+    raw_outline: AIMessage = await llm_manager.query_async(
         "reasoning",
         [{"role": "user", "content": prompt}],
         "raw_outline",
@@ -100,7 +97,7 @@ def monologue_generate_raw_outline(
     return raw_outline.content
 
 
-def monologue_generate_monologue(
+async def monologue_generate_monologue(
     raw_outline: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -123,7 +120,7 @@ def monologue_generate_monologue(
         speaker_1_name=request.speaker_1_name,
     )
 
-    monologue: AIMessage = llm_manager.query_sync(
+    monologue: AIMessage = await llm_manager.query_async(
         "reasoning",
         [{"role": "user", "content": prompt}],
         "create_monologue",
@@ -139,7 +136,7 @@ def monologue_generate_monologue(
     return monologue.content
 
 
-def monologue_create_final_conversation(
+async def monologue_create_final_conversation(
     monologue: str,
     request: TranscriptionRequest,
     llm_manager: LLMManager,
@@ -160,7 +157,7 @@ def monologue_create_final_conversation(
         schema=json.dumps(schema, indent=2),
     )
 
-    conversation_json: Dict = llm_manager.query_sync(
+    conversation_json: Dict = await llm_manager.query_async(
         "json",
         [{"role": "user", "content": prompt}],
         "create_final_conversation",

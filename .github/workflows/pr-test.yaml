@@ -34,5 +34,9 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r tests/requirements-test.txt  # Make sure this file exists with your test dependencies
 
-    - name: Run E2E tests
-      run: python tests/test.py federer.pdf PNP_Proof.pdf
+    - name: Run monologue E2E tests
+      run: python tests/test.py --monologue bofa-context.pdf citi-context.pdf
+  
+    - name: Run podcast E2E tests
+      run: python tests/test.py bofa-context.pdf citi-context.pdf
+
