@@ -82,7 +82,7 @@ NV_INGEST_RETRIEVE_URL = "https://nv-ingest-rest-endpoint.brevlab.com/v1"
 # CORS setup
 CORS_ORIGINS = os.getenv(
     "CORS_ORIGINS",
-    "http://localhost:3000,https://nvnotebook-lm.vercel.app,https://notebooklm.brev.nvidia.com,https://ara.brev.nvidia.com",
+    "http://localhost:3000,https://nvnotebook-lm.vercel.app,https://notebooklm.brev.nvidia.com,https://ara.brev.nvidia.com,https://aira.brev.nvidia.com",
 )
 allowed_origins = [origin.strip() for origin in CORS_ORIGINS.split(",")]
 logger.info(f"Configuring CORS with allowed origins: {allowed_origins}")
