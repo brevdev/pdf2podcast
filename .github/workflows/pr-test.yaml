@@ -9,8 +9,21 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  e2e-test:
+  test:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        test-group:
+          - name: "Agent Service"
+            command: "python services/AgentService/test_api.py"
+          - name: "PDF Service"
+            command: "python services/PDFService/test_api.py"
+          - name: "TTS Service"
+            command: "python services/TTSService/test_api.py"
+          - name: "Monologue E2E"
+            command: "python tests/test.py --monologue --target bofa-context.pdf --context citi-context.pdf"
+          - name: "Podcast E2E"
+            command: "python tests/test.py --target bofa-context.pdf --context citi-context.pdf"
 
     steps:
       - uses: actions/checkout@v4
@@ -39,17 +52,5 @@ jobs:
           cd shared
           pip install .
 
-      - name: Run Agent Service tests
-        run: python services/AgentService/test_api.py
-
-      - name: Run PDF Service tests
-        run: python services/PDFService/test_api.py
-
-      - name: Run TTS Service tests
-        run: python services/TTSService/test_api.py
-
-      - name: Run monologue E2E tests
-        run: python tests/test.py --monologue --target bofa-context.pdf --context citi-context.pdf
-
-      - name: Run podcast E2E tests
-        run: python tests/test.py --target bofa-context.pdf --context citi-context.pdf
+      - name: Run ${{ matrix.test-group.name }} tests
+        run: ${{ matrix.test-group.command }}
