@@ -164,6 +164,12 @@ async def monologue_create_final_conversation(
         json_schema=schema,
     )
 
+    # Ensure all strings are unescaped
+    if "dialogues" in conversation_json:
+        for entry in conversation_json["dialogues"]:
+            if "text" in entry:
+                entry["text"] = unescape_unicode_string(entry["text"])
+
     prompt_tracker.track(
         "create_final_conversation",
         prompt,
@@ -172,3 +178,9 @@ async def monologue_create_final_conversation(
     )
 
     return Conversation.model_validate(conversation_json)
+
+
+def unescape_unicode_string(s: str) -> str:
+    """Convert escaped Unicode sequences to actual Unicode characters"""
+    # This handles both raw strings (with extra backslashes) and regular strings
+    return s.encode("utf-8").decode("unicode-escape")
