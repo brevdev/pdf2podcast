@@ -25,6 +25,13 @@ NC := \033[0m  # No Color
 # Explicitly use bash
 SHELL := /bin/bash
 
+# List of all services used - pdf model services
+NON_PDF_MODEL_SERVICES := redis minio api-service agent-service pdf-service tts-service jaeger
+
+PDF_MODEL_SERVICES := redis pdf-api celery-worker
+
+NVINGEST_URL := https://nv-ingest-rest-endpoint.brevlab.com/v1
+
 # Check if environment variables are set
 check_env:
 	@for var in $(REQUIRED_ENV_VARS); do \
@@ -43,51 +50,49 @@ uv:
 	@echo "$(GREEN)Setting up UV environment...$(NC)"
 	@bash setup.sh
 
-# Development target
-dev: check_env
+create-minio-data-dir:
 	@if [ ! -d "data/minio" ]; then \
 		echo "$(GREEN)Creating data/minio directory...$(NC)"; \
 		mkdir -p data/minio; \
 	fi
-	docker compose down
-	@if [ -z "$(MODEL_API_URL)" ]; then \
-		echo "$(GREEN)USING NV-INGEST$(NC)"; \
-	else \
-		echo "$(GREEN)USING DOCLING$(NC)"; \
-	fi
+
+# Development target that runs with external nvingest
+dev: check_env create-minio-data-dir
+	docker compose down $(NON_PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
+	@if [ "$(DETACH)" = "1" ]; then \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES) --build -d; \
+	else \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES) --build; \
+	fi
+
+# Development target for pdf model service
+model-dev:
+	docker compose down $(PDF_MODEL_SERVICES)
+	@echo "$(GREEN)Starting development environment...$(NC)"
+	docker compose up $(PDF_MODEL_SERVICES) --build
+
+# Development target that will run all services including pdf model locally
+all-services: check_env create-minio-data-dir
+	docker compose down
+	@echo "$(GREEN)Starting development environment all-services...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
 		docker compose -f docker-compose.yaml --env-file .env up --build -d; \
 	else \
 		docker compose -f docker-compose.yaml --env-file .env up --build; \
 	fi
 
-# Development target for pdf model service
-model-dev:
-	docker compose -f services/PDFService/PDFModelService/docker-compose.yml down
-	@echo "$(GREEN)Starting development environment...$(NC)"
-	docker compose -f services/PDFService/PDFModelService/docker-compose.yml up --build
-
 # Production target
-prod: check_env
-	@if [ ! -d "data/minio" ]; then \
-		echo "$(GREEN)Creating data/minio directory...$(NC)"; \
-		mkdir -p data/minio; \
-	fi
-	docker compose down
-	@if [ -z "$(MODEL_API_URL)" ]; then \
-		echo "$(GREEN)USING NV-INGEST$(NC)"; \
-	else \
-		echo "$(GREEN)USING DOCLING$(NC)"; \
-	fi
+prod: check_env create-minio-data-dir
+	docker compose down $(NON_PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up
+	VERSION=$(VERSION) MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose-remote.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES)
 
 # Production target for pdf model service
 model-prod:
-	docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml down
+	docker compose -f docker-compose-remote.yaml down $(PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) docker compose -f services/PDFService/PDFModelService/docker-compose-remote.yml up
+	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml up $(PDF_MODEL_SERVICES)
 
 # Version bump (minor) and release target
 version-bump:
@@ -127,4 +132,4 @@ format:
 
 ruff: lint format
 
-.PHONY: check_env dev clean ruff prod version-bump version-bump-major uv model-prod model-dev
+.PHONY: check_env dev clean ruff prod version-bump version-bump-major uv model-prod model-dev all-services create-minio-data-dir

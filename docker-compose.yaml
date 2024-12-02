@@ -71,7 +71,7 @@ services:
       - "8003:8003"
     environment:
       - REDIS_URL=redis://redis:6379
-      - MODEL_API_URL=${MODEL_API_URL:-https://nv-ingest-8t8cjywa2.brevlab.com/v1}
+      - MODEL_API_URL=${MODEL_API_URL:-http://pdf-api:8004}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -109,6 +109,47 @@ services:
       retries: 3
     networks:
       - app-network
+  
+  pdf-api:
+    build:
+      context: services/PDFService/PDFModelService
+      dockerfile: Dockerfile.api
+    ports:
+      - "8004:8004"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TEMP_FILE_DIR=/tmp/pdf_conversions
+    volumes:
+      - pdf_temp:/tmp/pdf_conversions
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  celery-worker:
+    build:
+      context: services/PDFService/PDFModelService
+      dockerfile: Dockerfile.worker
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - TEMP_FILE_DIR=/tmp/pdf_conversions
+    volumes:
+      - pdf_temp:/tmp/pdf_conversions
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+  pdf_temp:
 
 networks:
   app-network:

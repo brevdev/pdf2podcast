@@ -6,6 +6,7 @@ services:
     command: redis-server --appendonly no
     networks:
       - app-network
+
   minio:
     image: minio/minio:latest
     ports:
@@ -41,6 +42,7 @@ services:
       - jaeger
     networks:
       - app-network
+
   agent-service:
     image: nvcr.io/pfteb4cqjzrs/playground/agent-service:${VERSION:-1.1}
     ports:
@@ -55,19 +57,21 @@ services:
       - redis
     networks:
       - app-network
+
   pdf-service:
     image: nvcr.io/pfteb4cqjzrs/playground/pdf-service:${VERSION:-1.1}
     ports:
       - "8003:8003"
     environment:
       - REDIS_URL=redis://redis:6379
-      - MODEL_API_URL=${MODEL_API_URL:-https://nv-ingest-8t8cjywa2.brevlab.com/v1}
+      - MODEL_API_URL=${MODEL_API_URL:-http://pdf-api:8004}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - redis
     networks:
       - app-network
+
   tts-service:
     image: nvcr.io/pfteb4cqjzrs/playground/tts-service:${VERSION:-1.1}
     ports:
@@ -95,6 +99,43 @@ services:
       retries: 3
     networks:
       - app-network
+
+  pdf-api:
+    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-api:${VERSION}
+    ports:
+      - "8003:8003"
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - TEMP_FILE_DIR=/tmp/pdf_conversions
+    volumes:
+      - pdf_temp:/tmp/pdf_conversions
+    depends_on:
+      - redis
+      - celery-worker
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  celery-worker:
+    image: nvcr.io/pfteb4cqjzrs/playground/pdf-model-worker:${VERSION}
+    environment:
+      - CELERY_BROKER_URL=redis://redis:6379/0
+      - CELERY_RESULT_BACKEND=redis://redis:6379/0
+      - TEMP_FILE_DIR=/tmp/pdf_conversions
+    volumes:
+      - pdf_temp:/tmp/pdf_conversions
+    depends_on:
+      - redis
+    restart: unless-stopped
+    networks:
+      - app-network
+
+volumes:
+  redis_data:
+  pdf_temp:
 
 networks:
   app-network:
