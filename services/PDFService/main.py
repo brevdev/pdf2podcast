@@ -1,4 +1,4 @@
-from fastapi import FastAPI, File, UploadFile, BackgroundTasks, HTTPException, Form
+from fastapi import FastAPI, BackgroundTasks, HTTPException, Form, File, UploadFile
 from shared.job import JobStatusManager
 from shared.otel import OpenTelemetryInstrumentation, OpenTelemetryConfig
 from opentelemetry.trace.status import StatusCode
@@ -153,11 +153,15 @@ async def convert_pdfs_to_markdown(
                 )
 
 
-async def process_pdfs(
-    job_id: str, contents: List[bytes], filenames: List[str], vdb_task: bool = False
+async def convert_pdfs(
+    job_id: str,
+    contents: List[bytes],
+    filenames: List[str],
+    types: List[str],
+    vdb_task: bool = False,
 ):
     """Process multiple PDFs and return metadata for each"""
-    with telemetry.tracer.start_as_current_span("pdf.process_pdfs") as span:
+    with telemetry.tracer.start_as_current_span("pdf.convert_pdfs") as span:
         try:
             logger.info(
                 f"Starting PDF processing for job {job_id} with {len(contents)} files"
@@ -194,13 +198,14 @@ async def process_pdfs(
 
                 # Create metadata list
                 pdf_metadata_list = []
-                for filename, result in zip(filenames, results):
+                for filename, result, type in zip(filenames, results, types):
                     try:
                         metadata = PDFMetadata(
                             filename=filename,
                             markdown=result.content
                             if result.status == ConversionStatus.SUCCESS
                             else "",
+                            type=type,
                             status=result.status,
                             error=result.error,
                         )
@@ -257,6 +262,7 @@ async def process_pdfs(
 async def convert_pdf(
     background_tasks: BackgroundTasks,
     files: List[UploadFile] = File(...),
+    types: List[str] = Form(...),
     job_id: str = Form(...),
     vdb_task: bool = Form(False),
 ):
@@ -272,16 +278,20 @@ async def convert_pdf(
         # Read all file contents and filenames
         contents = []
         filenames = []
-        for file in files:
+        file_types = []
+        for file, type in zip(files, types):
             content = await file.read()
             contents.append(content)
             filenames.append(file.filename)
+            file_types.append(type)
 
         span.set_attribute("num_files", len(files))
         job_manager.create_job(job_id)
 
         # Start processing in background
-        background_tasks.add_task(process_pdfs, job_id, contents, filenames, vdb_task)
+        background_tasks.add_task(
+            convert_pdfs, job_id, contents, filenames, file_types, vdb_task
+        )
 
         return {"job_id": job_id}
 

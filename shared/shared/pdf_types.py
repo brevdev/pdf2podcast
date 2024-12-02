@@ -1,5 +1,5 @@
 from pydantic import BaseModel, Field
-from typing import Optional
+from typing import Optional, Union, Literal
 from datetime import datetime
 from enum import Enum
 
@@ -21,5 +21,6 @@ class PDFMetadata(BaseModel):
     markdown: str = ""
     summary: str = ""
     status: ConversionStatus
+    type: Union[Literal["target"], Literal["context"]]
     error: Optional[str] = None
     created_at: datetime = Field(default_factory=datetime.utcnow)

@@ -6,6 +6,6 @@ python3 test.py --monologue \
     db-context.pdf \
     gs-context.pdf \
     hsbc-context.pdf \
-    investorpres-main.pdf \
+    investorpres-main.pdf target \
     jpm-context.pdf \
     keybanc-context.pdf

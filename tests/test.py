@@ -218,7 +218,11 @@ def test_saved_podcasts(base_url: str, job_id: str, max_retries=5, retry_delay=5
 
 
 def test_api(
-    base_url: str, pdf_files: List[str], monologue: bool = False, vdb: bool = False
+    base_url: str,
+    target_files: List[str],
+    context_files: List[str],
+    monologue: bool = False,
+    vdb: bool = False,
 ):
     voice_mapping = {
         "speaker-1": "iP95p4xoKVk53GoZ742B",
@@ -230,19 +234,9 @@ def test_api(
     process_url = f"{base_url}/process_pdf"
 
     # Update path resolution
-    current_dir = os.path.dirname(
-        os.path.abspath(__file__)
-    )  # This gets /tests directory
-    project_root = os.path.dirname(current_dir)  # Go up one level to project root
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+    project_root = os.path.dirname(current_dir)
     samples_dir = os.path.join(project_root, "samples")
-
-    # Rest of the path handling remains the same
-    sample_pdf_paths = []
-    for pdf_file in pdf_files:
-        if os.path.isabs(pdf_file):
-            sample_pdf_paths.append(pdf_file)
-        else:
-            sample_pdf_paths.append(os.path.join(samples_dir, pdf_file))
 
     # Prepare the payload with updated schema and userId
     transcription_params = {
@@ -259,90 +253,139 @@ def test_api(
     if not monologue:
         transcription_params["speaker_2_name"] = "Kate"
 
-    # Step 1: Submit the PDF files and get job ID
     print(
         f"\n[{datetime.now().strftime('%H:%M:%S')}] Submitting PDFs for processing..."
     )
     print(f"Using voices: {voice_mapping}")
 
-    pdf_files = [open(path, "rb") for path in sample_pdf_paths]
-    try:
-        files = [
-            ("files", (os.path.basename(path), pdf_file, "application/pdf"))
-            for path, pdf_file in zip(sample_pdf_paths, pdf_files)
-        ]
+    # Prepare multipart form data
+    form_data = []
 
-        response = requests.post(
-            process_url,
-            files=files,
-            data={"transcription_params": json.dumps(transcription_params)},
-        )
+    # Process target files
+    for pdf_file in target_files:
+        if not os.path.isabs(pdf_file):
+            pdf_file = os.path.join(samples_dir, pdf_file)
+
+        with open(pdf_file, "rb") as f:
+            content = f.read()
+            form_data.append(
+                (
+                    "target_files",
+                    (os.path.basename(pdf_file), content, "application/pdf"),
+                )
+            )
+
+    # Process context files
+    for pdf_file in context_files:
+        if not os.path.isabs(pdf_file):
+            pdf_file = os.path.join(samples_dir, pdf_file)
+
+        with open(pdf_file, "rb") as f:
+            content = f.read()
+            form_data.append(
+                (
+                    "context_files",
+                    (os.path.basename(pdf_file), content, "application/pdf"),
+                )
+            )
+
+    # Add transcription parameters
+    form_data.append(("transcription_params", (None, json.dumps(transcription_params))))
+
+    try:
+        response = requests.post(process_url, files=form_data)
 
         assert (
             response.status_code == 202
-        ), f"Expected status code 202, but got {response.status_code}"
+        ), f"Expected status code 202, but got {response.status_code}. Response: {response.text}"
         job_data = response.json()
         assert "job_id" in job_data, "Response missing job_id"
         job_id = job_data["job_id"]
         print(f"[{datetime.now().strftime('%H:%M:%S')}] Job ID received: {job_id}")
 
-    finally:
-        for f in pdf_files:
-            f.close()
+        # Step 2: Start monitoring status via WebSocket
+        monitor = StatusMonitor(base_url, job_id)
+        monitor.start()
 
-    # Step 2: Start monitoring status via WebSocket
-    monitor = StatusMonitor(base_url, job_id)
-    monitor.start()
+        try:
+            # Wait for TTS completion or timeout
+            max_wait = 40 * 60
+            if not monitor.tts_completed.wait(timeout=max_wait):
+                raise TimeoutError(f"Test timed out after {max_wait} seconds")
 
-    try:
-        # Wait for TTS completion or timeout
-        max_wait = 40 * 60
-        if not monitor.tts_completed.wait(timeout=max_wait):
-            raise TimeoutError(f"Test timed out after {max_wait} seconds")
-
-        # If we get here, TTS completed successfully
-        print(
-            f"\n[{datetime.now().strftime('%H:%M:%S')}] TTS processing completed, retrieving audio file..."
-        )
-
-        # Get the final output with retry logic
-        audio_content = get_output_with_retry(base_url, job_id)
-
-        # Save the audio file
-        output_path = os.path.join(current_dir, "output.mp3")
-        with open(output_path, "wb") as f:
-            f.write(audio_content)
-        print(
-            f"[{datetime.now().strftime('%H:%M:%S')}] Audio file saved as '{output_path}'"
-        )
-
-        # Test saved podcasts endpoints with the newly created job_id
-        test_saved_podcasts(base_url, job_id)
-
-        # Test RAG endpoint if vdb flag is enabled
-        if vdb:
-            print("\nTesting RAG endpoint...")
-            test_query = "What is the main topic of this document?"
-            rag_response = requests.post(
-                f"{base_url}/query_vector_db",
-                json={"query": test_query, "k": 3, "job_id": job_id},
+            # If we get here, TTS completed successfully
+            print(
+                f"\n[{datetime.now().strftime('%H:%M:%S')}] TTS processing completed, retrieving audio file..."
             )
-            assert (
-                rag_response.status_code == 200
-            ), f"RAG endpoint failed: {rag_response.text}"
-            rag_results = rag_response.json()
-            print(f"RAG Query: '{test_query}'")
-            print(f"RAG Results: {json.dumps(rag_results, indent=2)}")
 
-    finally:
-        monitor.stop()
+            # Get the final output with retry logic
+            audio_content = get_output_with_retry(base_url, job_id)
+
+            # Save the audio file
+            output_path = os.path.join(current_dir, "output.mp3")
+            with open(output_path, "wb") as f:
+                f.write(audio_content)
+            print(
+                f"[{datetime.now().strftime('%H:%M:%S')}] Audio file saved as '{output_path}'"
+            )
+
+            # Test saved podcasts endpoints with the newly created job_id
+            test_saved_podcasts(base_url, job_id)
+
+            # Test RAG endpoint if vdb flag is enabled
+            if vdb:
+                print("\nTesting RAG endpoint...")
+                test_query = "What is the main topic of this document?"
+                rag_response = requests.post(
+                    f"{base_url}/query_vector_db",
+                    json={"query": test_query, "k": 3, "job_id": job_id},
+                )
+                assert (
+                    rag_response.status_code == 200
+                ), f"RAG endpoint failed: {rag_response.text}"
+                rag_results = rag_response.json()
+                print(f"RAG Query: '{test_query}'")
+                print(f"RAG Results: {json.dumps(rag_results, indent=2)}")
+
+        finally:
+            monitor.stop()
+
+    except Exception as e:
+        print(f"Error during PDF submission: {e}")
+        raise
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Process PDF files for audio conversion"
+        description="Process PDF files for audio conversion",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+        Examples:
+        # Process with target and context files
+        python test.py --target main.pdf --context context1.pdf context2.pdf
+
+        # Process with only context files
+        python test.py --context file1.pdf file2.pdf file3.pdf
+
+        # Process with multiple target files
+        python test.py --target target1.pdf target2.pdf --context context1.pdf
+        """,
     )
-    parser.add_argument("pdf_files", nargs="+", help="PDF files to process")
+
+    parser.add_argument(
+        "--target",
+        nargs="+",
+        default=[],
+        help="PDF files to use as targets",
+        metavar="PDF",
+    )
+    parser.add_argument(
+        "--context",
+        nargs="+",
+        default=[],
+        help="PDF files to use as context",
+        metavar="PDF",
+    )
     parser.add_argument(
         "--api-url",
         default=os.getenv("API_SERVICE_URL", "http://localhost:8002"),
@@ -360,10 +403,24 @@ if __name__ == "__main__":
     )
 
     args = parser.parse_args()
+
+    # Validate that at least one file was provided
+    if not args.target and not args.context:
+        parser.error(
+            "At least one PDF file must be provided (either target or context)"
+        )
+
     print(f"API URL: {args.api_url}")
-    print(f"Processing PDF files: {args.pdf_files}")
+    print(f"Target PDF files: {args.target}")
+    print(f"Context PDF files: {args.context}")
     print(f"Monologue mode: {args.monologue}")
     print(f"VDB mode: {args.vdb}")
     print(f"Using test user ID: {TEST_USER_ID}")
 
-    test_api(args.api_url, args.pdf_files, args.monologue, args.vdb)
+    test_api(
+        args.api_url,
+        args.target,
+        args.context,
+        args.monologue,
+        args.vdb,
+    )

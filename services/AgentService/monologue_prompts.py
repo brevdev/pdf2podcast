@@ -55,7 +55,7 @@ Available Source Documents:
 
 Requirements:
 1. Content Strategy
-   - Prioritize topics according to focus instructions
+   - Focus on the content in Target Documents, and use Context Documents as support and context
    - Identify key financial metrics and trends
    - Analyze potential stakeholder concerns
    - Draw connections between documents and focus areas
@@ -78,7 +78,7 @@ Requirements:
    - Express percentages in spoken form
    - Write out mathematical operations
 
-Output a structured outline that synthesizes insights across all documents. This should be a concise, actionable summary."""
+Output a structured outline that synthesizes insights across all documents, emphasizing Target Documents while using Context Documents for support."""
 
 MONOLOGUE_TRANSCRIPT_PROMPT_STR = """
 Create a focused financial update based on this outline and source documents.
@@ -89,7 +89,7 @@ Outline:
 Available Source Documents:
 {% for doc in documents %}
 <document>
-<is_important>true</is_important>
+<type>{"Target Document" if doc.type == "target" else "Context Document"}</type>
 <path>{{doc.filename}}</path>
 <summary>
 {{doc.summary}}
@@ -116,9 +116,9 @@ Requirements:
    - Clear source attribution
 
 2. Content Structure
-   - Follow the provided outline
+   - Prioritize insights from Target Documents
+   - Support with Context Documents where relevant
    - Maintain logical flow between points
-   - Support key claims with evidence
    - End with a clear takeaway
 
 3. Text Formatting:

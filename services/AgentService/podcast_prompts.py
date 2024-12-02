@@ -50,7 +50,7 @@ Available Source Documents:
 
 Requirements:
 1. Content Strategy
-  - Prioritize topics according to focus instructions
+  - Focus on the content in Target Documents, and use Context Documents as support and context
   - Identify key debates and differing viewpoints
   - Analyze potential audience questions/concerns
   - Draw connections between documents and focus areas
@@ -62,12 +62,12 @@ Requirements:
   - Build natural narrative flow between topics
 
 3. Coverage
-  - Comprehensive treatment of focus areas
-  - Strategic depth on key topics
+  - Comprehensive treatment of Target Documents
+  - Strategic integration of Context Documents for support
   - Supporting evidence from all relevant documents
   - Balance technical accuracy with engaging delivery
 
-Ensure the outline creates a cohesive narrative that emphasizes the specified focus areas while maintaining overall context and accuracy.
+Ensure the outline creates a cohesive narrative that emphasizes the Target Documents while using Context Documents to provide additional depth and background information.
 """
 
 PODCAST_MULTI_PDF_STRUCUTRED_OUTLINE_PROMPT_STR = """

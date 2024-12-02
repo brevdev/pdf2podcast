@@ -35,8 +35,8 @@ jobs:
         pip install -r tests/requirements-test.txt  # Make sure this file exists with your test dependencies
 
     - name: Run monologue E2E tests
-      run: python tests/test.py --monologue bofa-context.pdf citi-context.pdf
+      run: python tests/test.py --monologue --target bofa-context.pdf --context citi-context.pdf
   
     - name: Run podcast E2E tests
-      run: python tests/test.py bofa-context.pdf citi-context.pdf
+      run: python tests/test.py --target bofa-context.pdf --context citi-context.pdf
 
