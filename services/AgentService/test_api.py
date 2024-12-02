@@ -21,7 +21,6 @@ def test_transcribe_api():
     # error: Optional[str] = None
     # created_at: datetime = Field(default_factory=datetime.utcnow)
 
-
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
         filename="sample.pdf",
@@ -29,7 +28,7 @@ def test_transcribe_api():
         markdown="Sample markdown content",
         summary="",
         status="success",
-        created_at=datetime.utcnow()
+        created_at=datetime.utcnow(),
     )
 
     pdf_metadata_2 = PDFMetadata(
@@ -70,10 +69,7 @@ def test_transcribe_api():
     )
 
     # Send POST request
-    response = requests.post(
-        TRANSCRIBE_URL, 
-        json=request.model_dump(mode='json')
-    )
+    response = requests.post(TRANSCRIBE_URL, json=request.model_dump(mode="json"))
 
     # Check if the request was successful
     assert (

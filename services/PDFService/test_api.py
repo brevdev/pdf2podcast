@@ -74,13 +74,13 @@ def test_convert_pdf_endpoint(pdf_paths: List[str]) -> bool:
             f"\nUploading {len(files)} files for conversion: {', '.join(f.name for f in pdf_files)}..."
         )
         response = requests.post(
-            f"{PDF_SERVICE_URL}/convert", 
+            f"{PDF_SERVICE_URL}/convert",
             files=files,
             data={
                 "types": ["context", "target"],  # Hardcode types for the two files
                 "job_id": f"test-job-{int(time.time())}",
-                "vdb_task": False
-            }
+                "vdb_task": False,
+            },
         )
 
         if response.status_code != 202:
@@ -199,10 +199,7 @@ def test_health_endpoint():
 def main():
     """Main entry point for the test script"""
     # Hardcode two sample files
-    sample_files = [
-        "samples/bofa-context.pdf",
-        "samples/citi-context.pdf"
-    ]
+    sample_files = ["samples/bofa-context.pdf", "samples/citi-context.pdf"]
 
     print("Running PDF Service API tests...")
 
