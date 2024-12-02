@@ -301,19 +301,32 @@ def process_pdf_task(
 @app.post("/process_pdf", status_code=202)
 async def process_pdf(
     background_tasks: BackgroundTasks,
-    files: Union[UploadFile, List[UploadFile]] = File(...),
-    file_types: Union[str, List[str]] = Form(...),
+    target_files: Union[UploadFile, List[UploadFile]] = File(...),
+    context_files: Union[UploadFile, List[UploadFile]] = File([]),
     transcription_params: str = Form(...),
 ):
     with telemetry.tracer.start_as_current_span("api.process_pdf") as span:
         # Convert single file to list for consistent handling
-        files_list = [files] if isinstance(files, UploadFile) else files
+        target_files_list = (
+            [target_files] if isinstance(target_files, UploadFile) else target_files
+        )
+        context_files_list = (
+            [context_files] if isinstance(context_files, UploadFile) else context_files
+        )
 
         span.set_attribute("request", transcription_params)
-        span.set_attribute("num_files", len(files_list))
+        span.set_attribute("num_files", len(target_files_list) + len(context_files_list))
 
         # Validate all files are PDFs
-        for file in files_list:
+        for file in target_files_list:
+            if file.content_type != "application/pdf":
+                span.set_status(
+                    status=StatusCode.ERROR, description="invalid file type"
+                )
+                raise HTTPException(
+                    status_code=400, detail="Only PDF files are allowed"
+                )
+        for file in context_files_list:
             if file.content_type != "application/pdf":
                 span.set_status(
                     status=StatusCode.ERROR, description="invalid file type"
@@ -334,11 +347,14 @@ async def process_pdf(
         job_id = str(uuid.uuid4())
         span.set_attribute("job_id", job_id)
 
-        # Read all files
+        # Read target and context files
         files_and_types = []
-        for file, type in zip(files, file_types):
+        for file in target_files_list:
             content = await file.read()
-            files_and_types.append((content, type))
+            files_and_types.append((content, "target"))
+        for file in context_files_list:
+            content = await file.read()
+            files_and_types.append((content, "context"))
 
         # Start processing
         background_tasks.add_task(process_pdf_task, job_id, files_and_types, params)
