@@ -72,7 +72,13 @@ model-dev:
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	docker compose up $(PDF_MODEL_SERVICES) --build
 
-# Development target that will run all services including pdf model locally
+# Production target for pdf model service
+model-prod:
+	docker compose -f docker-compose-remote.yaml down $(PDF_MODEL_SERVICES)
+	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
+	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml up $(PDF_MODEL_SERVICES)
+
+# Development target that will run all services including docling for the pdf model locally
 all-services: check_env create-minio-data-dir
 	docker compose down
 	@echo "$(GREEN)Starting development environment all-services...$(NC)"
@@ -87,12 +93,6 @@ prod: check_env create-minio-data-dir
 	docker compose down $(NON_PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose-remote.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES)
-
-# Production target for pdf model service
-model-prod:
-	docker compose -f docker-compose-remote.yaml down $(PDF_MODEL_SERVICES)
-	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml up $(PDF_MODEL_SERVICES)
 
 # Version bump (minor) and release target
 version-bump:
