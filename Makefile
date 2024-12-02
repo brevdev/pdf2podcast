@@ -57,29 +57,29 @@ create-minio-data-dir:
 		mkdir -p data/minio; \
 	fi
 
-# Development target that uses a hosted nv-ingest endpoint for development
+# Development target that does not locally run and build docling
 dev: check_env create-minio-data-dir
 	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
-		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
+		docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
 	else \
-		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build; \
+		docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build; \
 	fi
 
-# Development target to run just docling locally
+# Development target to build the pdf model service (docling) for local development
 model-dev:
 	docker compose down $(PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	docker compose up $(PDF_MODEL_SERVICES) --build
 
-# Production target to run just docling in production
+# Production target to pull pdf model service (docling) in production. Use this if you want to host the pdf model service on a separate machine.
 model-prod:
 	docker compose -f docker-compose-remote.yaml down $(PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
 	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml up $(PDF_MODEL_SERVICES)
 
-# Development target that will run all services including docling for the pdf model locally
+# Development target that will run all services including the pdf model service (docling) locally
 all-services: check_env create-minio-data-dir
 	docker compose down
 	@echo "$(GREEN)Starting development environment all-services...$(NC)"
@@ -89,11 +89,11 @@ all-services: check_env create-minio-data-dir
 		docker compose -f docker-compose.yaml --env-file .env up --build; \
 	fi
 
-# Production target
+# Production target that will pull core services. This is meant to used in conjunction when you run make model-prod on a separate machine
 prod: check_env create-minio-data-dir
 	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose-remote.yaml --env-file .env up $(CORE_SERVICES)
+	VERSION=$(VERSION) docker compose -f docker-compose-remote.yaml --env-file .env up $(CORE_SERVICES)
 
 # Version bump (minor) and release target
 version-bump:
