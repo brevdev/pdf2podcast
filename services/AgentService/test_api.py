@@ -31,30 +31,19 @@ def test_transcribe_api():
         created_at=datetime.utcnow(),
     )
 
-    pdf_metadata_3 = PDFMetadata(
-        filename="sample3.pdf",
-        type="context",
-        markdown="Sample markdown content 3",
-        summary="",
-        status="success",
-        created_at=datetime.utcnow(),
-    )
-
     request = TranscriptionRequest(
         # TranscriptionParams fields
         userId="test-agent-service",
         name="Test Podcast",
         duration=2,  # Duration in minutes
-        monologue=False,
+        monologue=True,
         speaker_1_name="Host",
-        speaker_2_name="Guest",
         voice_mapping={
             "speaker-1": "iP95p4xoKVk53GoZ742B",
-            "speaker-2": "9BWtsMINqrJLrRacOk9x",
         },
         guide="Sample focus instructions",
         # TranscriptionRequest specific fields
-        pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
+        pdf_metadata=[pdf_metadata_1, pdf_metadata_2],
         job_id="test-job-123",
         vdb_task=False,
     )
