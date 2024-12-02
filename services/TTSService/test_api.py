@@ -51,7 +51,7 @@ def test_tts_api():
 
     try:
         # Load sample JSON data
-        with open("sample.json", "r") as f:
+        with open("services/TTSService/sample.json", "r") as f:
             data = json.load(f)
 
         # Add job_id if not present

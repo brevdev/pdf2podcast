@@ -4,6 +4,7 @@ import os
 import time
 from shared.api_types import TranscriptionRequest
 from shared.pdf_types import PDFMetadata
+from datetime import datetime
 
 
 def test_transcribe_api():
@@ -11,12 +12,24 @@ def test_transcribe_api():
     BASE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
     TRANSCRIBE_URL = f"{BASE_URL}/transcribe"
 
+    # class PDFMetadata(BaseModel):
+    # filename: str
+    # markdown: str = ""
+    # summary: str = ""
+    # status: ConversionStatus
+    # type: Union[Literal["target"], Literal["context"]]
+    # error: Optional[str] = None
+    # created_at: datetime = Field(default_factory=datetime.utcnow)
+
+
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
         filename="sample.pdf",
         type="target",
         markdown="Sample markdown content",
         summary="",
+        status="success",
+        created_at=datetime.utcnow()
     )
 
     pdf_metadata_2 = PDFMetadata(
@@ -24,6 +37,8 @@ def test_transcribe_api():
         type="context",
         markdown="Sample markdown content 2",
         summary="",
+        status="success",
+        created_at=datetime.utcnow(),
     )
 
     pdf_metadata_3 = PDFMetadata(
@@ -31,6 +46,8 @@ def test_transcribe_api():
         type="context",
         markdown="Sample markdown content 3",
         summary="",
+        status="success",
+        created_at=datetime.utcnow(),
     )
 
     request = TranscriptionRequest(
@@ -53,7 +70,10 @@ def test_transcribe_api():
     )
 
     # Send POST request
-    response = requests.post(TRANSCRIBE_URL, json=request.model_dump())
+    response = requests.post(
+        TRANSCRIBE_URL, 
+        json=request.model_dump(mode='json')
+    )
 
     # Check if the request was successful
     assert (
