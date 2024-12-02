@@ -30,7 +30,7 @@ NON_PDF_MODEL_SERVICES := redis minio api-service agent-service pdf-service tts-
 
 PDF_MODEL_SERVICES := redis pdf-api celery-worker
 
-NVINGEST_URL := https://nv-ingest-rest-endpoint.brevlab.com/v1
+NVINGEST_URL := https://nv-ingest-8t8cjywa2.brevlab.com/v1
 
 # Check if environment variables are set
 check_env:
