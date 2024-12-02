@@ -315,7 +315,9 @@ async def process_pdf(
         )
 
         span.set_attribute("request", transcription_params)
-        span.set_attribute("num_files", len(target_files_list) + len(context_files_list))
+        span.set_attribute(
+            "num_files", len(target_files_list) + len(context_files_list)
+        )
 
         # Validate all files are PDFs
         for file in target_files_list:
