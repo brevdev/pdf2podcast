@@ -51,7 +51,7 @@ You can view a mermaid diagram of our system [here](docs/README.md).
    python tests/test.py --target <pdf1.pdf> --context <pdf2.pdf>
    ```
 
-   This will generate a 2-person podcast. In order to generate a 1-person monologue, you can add the `--monologue` flag. Check out the test file for more examples.
+   This will generate a 2-person podcast. In order to generate a 1-person monologue, you can add the `--monologue` flag. Check out the test file for more examples. If you are not on a GPU machine, the PDF service might take a while to run.
 
 ## Hosting the PDF service on a separate machine
 

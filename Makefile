@@ -26,7 +26,7 @@ NC := \033[0m  # No Color
 SHELL := /bin/bash
 
 # List of all services used - pdf model services
-NON_PDF_MODEL_SERVICES := redis minio api-service agent-service pdf-service tts-service jaeger
+CORE_SERVICES := redis minio api-service agent-service pdf-service tts-service jaeger
 
 PDF_MODEL_SERVICES := redis pdf-api celery-worker
 
@@ -59,12 +59,12 @@ create-minio-data-dir:
 
 # Development target that uses a hosted nv-ingest endpoint for development
 dev: check_env create-minio-data-dir
-	docker compose down $(NON_PDF_MODEL_SERVICES)
+	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
-		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES) --build -d; \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
 	else \
-		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES) --build; \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build; \
 	fi
 
 # Development target to run just docling locally
@@ -91,9 +91,9 @@ all-services: check_env create-minio-data-dir
 
 # Production target
 prod: check_env create-minio-data-dir
-	docker compose down $(NON_PDF_MODEL_SERVICES)
+	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
-	VERSION=$(VERSION) MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose-remote.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES)
+	VERSION=$(VERSION) MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose-remote.yaml --env-file .env up $(CORE_SERVICES)
 
 # Version bump (minor) and release target
 version-bump:
