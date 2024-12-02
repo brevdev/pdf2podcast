@@ -62,12 +62,12 @@ ci: check_env create-minio-data-dir
 	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting CI environment...$(NC)"
 	@if [ "$(DETACH)" = "1" ]; then \
-		MODEL_API_URL=$(NVINGEST_URL) 	docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
 	else \
 		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build; \
 	fi
 
-# Development target that does not locally run and build docling
+# Development target that does not locally run and build docling. Make sure to set the MODEL_API_URL environment variable to the correct URL.
 dev: check_env create-minio-data-dir
 	docker compose down $(CORE_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
