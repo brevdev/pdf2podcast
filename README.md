@@ -68,8 +68,16 @@ We also support using a fork of NVIDIA's [NV-Ingest](https://github.com/NVIDIA/N
 ```bash
 echo "MODEL_API_URL=<nv-ingest-url>/v1" >> .env
 ```
-
 **Note the use of `v1` in the URL.**    
+
+Here is the workflow that we use for running this in production (disaggregated core services and pdf model service):
+```bash
+# On an L40s machine
+make model-prod
+
+# On a different machine
+make prod
+```
 
 ## Development Tools
 
