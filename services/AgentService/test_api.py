@@ -13,31 +13,43 @@ def test_transcribe_api():
 
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
-        filename="sample.pdf", markdown="Sample markdown content", summary=""
+        filename="sample.pdf",
+        type="target",
+        markdown="Sample markdown content",
+        summary="",
     )
 
     pdf_metadata_2 = PDFMetadata(
-        filename="sample2.pdf", markdown="Sample markdown content 2", summary=""
+        filename="sample2.pdf",
+        type="context",
+        markdown="Sample markdown content 2",
+        summary="",
     )
 
     pdf_metadata_3 = PDFMetadata(
-        filename="sample3.pdf", markdown="Sample markdown content 3", summary=""
+        filename="sample3.pdf",
+        type="context",
+        markdown="Sample markdown content 3",
+        summary="",
     )
 
     request = TranscriptionRequest(
         # TranscriptionParams fields
+        userId="test-agent-service",
         name="Test Podcast",
         duration=2,  # Duration in minutes
+        monologue=False,
         speaker_1_name="Host",
         speaker_2_name="Guest",
         voice_mapping={
-            "speaker-1": "iP95p4xoKVk53GoZ742B",  # Example voice ID
-            "speaker-2": "9BWtsMINqrJLrRacOk9x",  # Example voice ID
+            "speaker-1": "iP95p4xoKVk53GoZ742B",
+            "speaker-2": "9BWtsMINqrJLrRacOk9x",
         },
-        guide="Sample focus instructions",  # Optional
+        guide="Sample focus instructions",
         # TranscriptionRequest specific fields
         pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
         job_id="test-job-123",
+        vdb_task=False,
     )
 
     # Send POST request
