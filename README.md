@@ -7,13 +7,7 @@ You can view a mermaid diagram of our system [here](docs/README.md).
 
 ## Quick Start Guide
 
-1. **Choose a PDF processing service**:
-   - `docling` (recommended): Our default PDF service. This comes included in the repo itself. Instructions to spin this up are below
-   - `nv-ingest`: A fork of NVIDIA's NV-Ingest developed to match our APIs. See the [repo](https://github.com/jdye64/nv-ingest/tree/brev-dev-convert-endpoint) for more information. Note this requires 2 A100-SXM machines to run. We suggest using this in a production environment as runs a bit faster for concurrent requests
-
-   > **Note:** At the moment, we require the PDF service to be running on a separate machine. This is an action item for us to fix.
-
-2. **Environment Variables**:
+1. **Environment Variables**:
    We require the following environment variables to be set:
    ```bash
    # Create .env file with required variables
@@ -22,14 +16,9 @@ You can view a mermaid diagram of our system [here](docs/README.md).
    echo "MAX_CONCURRENT_REQUESTS=1" >> .env
    ```
 
-   If you are using `nv-ingest` on a separate machine, you can also add the following:
-   ```bash
-   echo "MODEL_API_URL=<base-url>/v1" >> .env
-   ```
-
    Note that in production we use the NVIDIA Eleven Labs API key which can handle concurrent requests. For local development, you may want to set `MAX_CONCURRENT_REQUESTS=1` to avoid rate limiting issues. You can generate your own testing API key for free [here](https://elevenlabs.io/).
 
-3. **Install Dependencies**:
+2. **Install Dependencies**:
    We use UV to manage python dependencies.
    
    ```bash
@@ -42,7 +31,7 @@ You can view a mermaid diagram of our system [here](docs/README.md).
 
    If you open up a new terminal window and want to quickly re-use the same environment, you can run `make uv` again.
 
-4. **Start Development Server**:
+3. **Start Development Server**:
    You can start the entire stack with:
    ```bash
    make all-services
@@ -59,10 +48,28 @@ You can view a mermaid diagram of our system [here](docs/README.md).
 
 4. **Run Podcast Generation**:
    ```bash
-   python tests/test.py --target <target.pdf> --context <context.pdf>
+   python tests/test.py --target <pdf1.pdf> --context <pdf2.pdf>
    ```
 
-   This will generate a 2-person podcast. In order to generate a 1-person monologue, you can add the `--monologue` flag.
+   This will generate a 2-person podcast. In order to generate a 1-person monologue, you can add the `--monologue` flag. Check out the test file for more examples.
+
+## Hosting the PDF service on a separate machine
+
+As stated above, we use [docling](https://github.com/DS4SD/docling) as our default PDF service. When you spin up the stack, docling will be built and run automatically.
+
+If you would like to run the PDF service on a separate machine, you can add the following to your `.env` file:
+```bash
+echo "MODEL_API_URL=<pdf-model-service-url" >> .env
+```
+
+### Using `nv-ingest`
+
+We also support using a fork of NVIDIA's [NV-Ingest](https://github.com/NVIDIA/NV-Ingest) as our PDF service. This requires 2 A100-SXM machines. See the [repo](https://github.com/jdye64/nv-ingest/tree/brev-dev-convert-endpoint) for more information. If you would like to use this, you can add the following to your `.env` file:
+```bash
+echo "MODEL_API_URL=<nv-ingest-url>/v1" >> .env
+```
+
+**Note the use of `v1` in the URL.**    
 
 ## Development Tools
 
@@ -89,24 +96,6 @@ make prod
 
 This uses the remote Docker Compose configuration and pulls pre-built images from the registry.
 
-## Troubleshooting
-
-1. **Environment Variables**:
-   If you see environment variable errors, ensure all required variables are set in `.env`:
-   ```bash
-   make check_env 
-   ```
-
-2. **Model Connection**:
-   1. If you are experiencing LLM issues, please try to curl your model endpoint directly.
-   2. Note that by default the system uses a custom fork of nv-ingest for its PDF-service which can be found [here](https://github.com/jdye64/nv-ingest/tree/brev-dev-convert-endpoint). 
-
-3. **Storage Issues**:
-   The system uses MinIO for storage. Ensure the `data/minio` directory exists:
-   ```bash
-   mkdir -p data/minio
-   ```
-
 ## Contributing
 
 1. Fork the repository
@@ -115,5 +104,3 @@ This uses the remote Docker Compose configuration and pulls pre-built images fro
 4. Run tests: `python tests/test.py <pdf1> <pdf2>`
 5. Run linting: `make ruff`
 6. Submit a pull request
-
-For more detailed information about each service, refer to their respective README files in the services directory.

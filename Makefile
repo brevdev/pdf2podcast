@@ -50,13 +50,14 @@ uv:
 	@echo "$(GREEN)Setting up UV environment...$(NC)"
 	@bash setup.sh
 
+# Create the minio data directory if it doesn't exist
 create-minio-data-dir:
 	@if [ ! -d "data/minio" ]; then \
 		echo "$(GREEN)Creating data/minio directory...$(NC)"; \
 		mkdir -p data/minio; \
 	fi
 
-# Development target that runs with external nvingest
+# Development target that uses a hosted nv-ingest endpoint for development
 dev: check_env create-minio-data-dir
 	docker compose down $(NON_PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
@@ -66,13 +67,13 @@ dev: check_env create-minio-data-dir
 		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(NON_PDF_MODEL_SERVICES) --build; \
 	fi
 
-# Development target for pdf model service
+# Development target to run just docling locally
 model-dev:
 	docker compose down $(PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting development environment...$(NC)"
 	docker compose up $(PDF_MODEL_SERVICES) --build
 
-# Production target for pdf model service
+# Production target to run just docling in production
 model-prod:
 	docker compose -f docker-compose-remote.yaml down $(PDF_MODEL_SERVICES)
 	@echo "$(GREEN)Starting production environment with version $(VERSION)...$(NC)"
