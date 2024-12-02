@@ -57,6 +57,16 @@ create-minio-data-dir:
 		mkdir -p data/minio; \
 	fi
 
+# CI target that will use a remote hosted NV-Ingest service
+ci: check_env create-minio-data-dir
+	docker compose down $(CORE_SERVICES)
+	@echo "$(GREEN)Starting CI environment...$(NC)"
+	@if [ "$(DETACH)" = "1" ]; then \
+		MODEL_API_URL=$(NVINGEST_URL) 	docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build -d; \
+	else \
+		MODEL_API_URL=$(NVINGEST_URL) docker compose -f docker-compose.yaml --env-file .env up $(CORE_SERVICES) --build; \
+	fi
+
 # Development target that does not locally run and build docling
 dev: check_env create-minio-data-dir
 	docker compose down $(CORE_SERVICES)
