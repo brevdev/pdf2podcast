@@ -12,15 +12,6 @@ def test_transcribe_api():
     BASE_URL = os.getenv("AGENT_SERVICE_URL", "http://localhost:8964")
     TRANSCRIBE_URL = f"{BASE_URL}/transcribe"
 
-    # class PDFMetadata(BaseModel):
-    # filename: str
-    # markdown: str = ""
-    # summary: str = ""
-    # status: ConversionStatus
-    # type: Union[Literal["target"], Literal["context"]]
-    # error: Optional[str] = None
-    # created_at: datetime = Field(default_factory=datetime.utcnow)
-
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
         filename="sample.pdf",
