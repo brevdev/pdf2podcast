@@ -15,6 +15,7 @@ from shared.api_types import (
     JobStatus,
     StatusUpdate,
     TranscriptionParams,
+    TranscriptionOnlyParams,
     RAGRequest,
 )
 from shared.prompt_types import PromptTracker
