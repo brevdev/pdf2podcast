@@ -8,7 +8,7 @@ API_SERVICE_URL=os.getenv("API_SERVICE_URL", "http://localhost:8002")
 
 transcription_params = {
     "name": "transcript-test",
-    "duration": 5,
+    "duration": 1,
     "speaker_1_name": "Bob",
     "guide": None,
     "userId": TEST_USER_ID,

@@ -42,10 +42,10 @@ from contextlib import contextmanager
 def LoggedSpan(name,logger,job_id=None):
 
     try:
-        span = telemetry.tracer.start_as_current_span(name)
-        if not(job_id is None):
-            span.set_attribute("job_id", job_id)
-        yield span
+        with telemetry.tracer.start_as_current_span(name) as span:
+            if not(job_id is None):
+                span.set_attribute("job_id", job_id)
+            yield span
     except Exception as e:
         if not(job_id is None):
             span.set_status(StatusCode.ERROR, f"{name} failed")

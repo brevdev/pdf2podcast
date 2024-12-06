@@ -46,7 +46,7 @@ class TranscriptionParams(BaseModel):
     speaker_2_name: Optional[str] = Field(
         None, description="Name of the second speaker (not required for monologue)"
     )
-    voice_mapping: Dict[str, str] = Field(
+    voice_mapping: Optional[Dict[str, str]] = Field(
         ...,
         description="Mapping of speaker IDs to voice IDs. For monologue, only speaker-1 is required",
         example={
