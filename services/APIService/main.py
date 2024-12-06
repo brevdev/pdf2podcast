@@ -36,6 +36,51 @@ import time
 import asyncio
 from typing import Dict, List, Union, Tuple
 
+from contextlib import contextmanager
+
+@contextmanager
+def LoggedSpan(name,logger,job_id=None):
+
+    try:
+        span = telemetry.tracer.start_as_current_span(name)
+        if not(job_id is None):
+            span.set_attribute("job_id", job_id)
+        yield span
+    except Exception as e:
+        if not(job_id is None):
+            span.set_status(StatusCode.ERROR, f"{name} failed")
+            span.record_exception(e)
+            logger.error(f"Job {job_id} failed at {name}: {str(e)}")
+        raise e 
+
+class SyncJobWaiter:
+    
+    def __init__(self, redis_client, logger):
+
+        self.logger=logger
+        self.redis_client = redis_client
+        self.pubsub = redis_client.pubsub()
+        self.pubsub.subscribe("status_updates:all")
+
+    def block(self, job_id):
+
+        while True:
+
+            message = self.pubsub.get_message(timeout=1)
+
+            if message['type'] == 'message':
+                update = StatusUpdate.model_validate_json(message["data"].decode())
+                
+                if update.job_id == job_id:
+                    self.logger.info(f"Received update for job {job_id}: {update}")
+
+                    if update.status == JobStatus.FAILED:
+                        raise Exception(f"{update.service}: {update.message}")
+
+                    if update.status == JobStatus.COMPLETED:
+                        return
+
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -62,6 +107,8 @@ telemetry.initialize(config, app)
 redis_client = redis.Redis.from_url(
     os.getenv("REDIS_URL", "redis://redis:6379"), decode_responses=False
 )
+
+sync = SyncJobWaiter(redis_client, logger)
 
 # Initialize the connection manager
 manager = ConnectionManager(redis_client=redis_client)
@@ -297,6 +344,210 @@ def process_pdf_task(
             logger.error(f"Job {job_id} failed: {str(e)}")
             raise
 
+######
+
+@app.post("/run/pdf_to_transcript",status_code=202)
+async def run_pdf_to_transcript(
+    background_tasks: BackgroundTasks,
+    target_files: Union[UploadFile, List[UploadFile]] = File(...),
+    context_files: Union[UploadFile, List[UploadFile]] = File([]),
+    transcription_params: str = Form(...),
+):
+    with LoggedSpan("api.pdf_to_transcript",logger) as span:
+        # Convert single file to list for consistent handling
+        target_files_list = (
+            [target_files] if isinstance(target_files, UploadFile) else target_files
+        )
+        context_files_list = (
+            [context_files] if isinstance(context_files, UploadFile) else context_files
+        )
+
+        span.set_attribute("request", transcription_params)
+        span.set_attribute(
+            "num_files", len(target_files_list) + len(context_files_list)
+        )
+
+        # Validate all files are PDFs
+        for file in target_files_list:
+            if file.content_type != "application/pdf":
+                span.set_status(
+                    status=StatusCode.ERROR, description="invalid file type"
+                )
+                raise HTTPException(
+                    status_code=400, detail="Only PDF files are allowed"
+                )
+        for file in context_files_list:
+            if file.content_type != "application/pdf":
+                span.set_status(
+                    status=StatusCode.ERROR, description="invalid file type"
+                )
+                raise HTTPException(
+                    status_code=400, detail="Only PDF files are allowed"
+                )
+
+        try:
+            params_dict = json.loads(transcription_params)
+            params = TranscriptionParams.model_validate(params_dict)
+            span.set_attribute("transcription_params", params.model_dump())
+        except (json.JSONDecodeError, ValidationError) as e:
+            span.set_status(status=StatusCode.ERROR, description="invalid params")
+            raise HTTPException(status_code=400, detail=str(e))
+
+        # Create job
+        job_id = f"pdf_to_transcript_{uuid.uuid4()}"
+        span.set_attribute("job_id", job_id)
+
+        # Read target and context files
+        files_and_types = []
+        for file in target_files_list:
+            content = await file.read()
+            files_and_types.append((content, "target"))
+        for file in context_files_list:
+            content = await file.read()
+            files_and_types.append((content, "context"))
+
+        # Start processing
+        background_tasks.add_task(
+            task_run_pdf_to_transcript,
+            job_id,
+            files_and_types,
+            params
+        )
+        span.set_status(status=StatusCode.OK)
+
+        return {"job_id": job_id}
+
+def task_run_pdf_to_transcript(
+    job_id: str,
+    files_and_types: List[Tuple[bytes, str]],
+    transcription_params: TranscriptionParams,
+):
+    with LoggedSpan("api.task_run_pdf_to_transcript",logger, job_id) as span:       
+
+        # Store all original PDFs
+        for idx, (content, _) in enumerate(files_and_types):
+            storage_manager.store_file(
+                transcription_params.userId,
+                job_id,
+                content,
+                f"{job_id}_{idx}.pdf",
+                "application/pdf",
+                transcription_params,
+            )
+        logger.info(
+            f"Stored {len(files_and_types)} original PDFs for {job_id} in storage"
+        )
+
+        # Send all PDFs to PDF Service
+        files = []
+        types = []
+        for i, (content, type) in enumerate(files_and_types):
+            files.append(("files", (f"file_{i}.pdf", content, "application/pdf")))
+            types.append(type)
+
+        logger.info(
+            f"Sending {len(files)} PDFs to PDF Service for {job_id} with VDB task: {transcription_params.vdb_task}"
+        )
+        requests.post(
+            f"{PDF_SERVICE_URL}/convert",
+            files=files,
+            data={
+                "types": types,
+                "job_id": job_id,
+                "vdb_task": transcription_params.vdb_task,
+            },
+        )
+
+        sync.block(job_id)
+
+        # Get PDF metadata list
+        pdf_metadata_list = requests.get(
+            f"{PDF_SERVICE_URL}/output/{job_id}"
+        ).json()
+
+        # Start Agent Service with PDF metadata
+        requests.post(
+            f"{AGENT_SERVICE_URL}/transcribe",
+            json={
+                "pdf_metadata": pdf_metadata_list,
+                "job_id": job_id,
+                **transcription_params.model_dump(),
+            },
+        )
+
+        sync.block(job_id)
+
+        agent_result = requests.get(
+            f"{AGENT_SERVICE_URL}/output/{job_id}"
+        ).json()
+
+        # Store script result in minio
+        storage_manager.store_file(
+            transcription_params.userId,
+            job_id,
+            json.dumps(agent_result).encode(),
+            f"{job_id}_agent_result.json",
+            "application/json",
+            transcription_params,
+        )
+        logger.info(
+            f"Stored agent result for {job_id} in minio, size: {len(json.dumps(agent_result).encode())} bytes"
+        )
+        return agent_result
+
+@app.get("/results/transcript/{job_id}")
+async def results_transcript(
+    job_id: str,
+    userId: str = Query(..., description="KAS User ID")
+):
+    with LoggedSpan("results_transcript",logger,job_id) as span:
+
+        agent_status_key = f"status:{job_id}:{str(ServiceType.AGENT)}"
+        span.set_attribute("agent_status_key", agent_status_key)
+
+        agent_status = redis_client.hgetall(agent_status_key)
+        if not agent_status:
+            raise HTTPException(status_code=404, detail="Result not found")
+        if agent_status.get(b"status", b"").decode() != str(JobStatus.COMPLETED):
+            span.set_attribute("agent_status", agent_status.get(b"status", b"").decode())
+            raise HTTPException(status_code=404, detail="Transcript not completed")
+
+        get_agent_result_key = f"result:{job_id}:{str(ServiceType.AGENT)}"
+        span.set_attribute("get_agent_result_key", get_agent_result_key)
+
+        result = redis_client.get(get_agent_result_key)
+        if not result:
+            logger.info(f"Final result not found in cache for {job_id}. Checking DB...")
+            result = storage_manager.get_file(userId, job_id,f"{job_id}_agent_result.json")
+            if not result:
+                span.set_status(StatusCode.ERROR, "result not found")
+                raise HTTPException(status_code=404, detail="Result not found")
+
+        return result
+
+
+@app.post("/run/tts",status_code=202)
+async def run_tts(
+    transcription_params: TranscriptionParams,
+    text: str
+):
+    pass
+
+def task_run_tts(
+    transcription_params: TranscriptionParams,
+    text: str
+):
+    pass
+
+@app.get("/results/tts/{job_id}")
+async def results_tts(
+    job_id: str,
+    userId: str = Query(..., description="KAS User ID")
+):
+    pass
+
+
+######
 
 @app.post("/process_pdf", status_code=202)
 async def process_pdf(
