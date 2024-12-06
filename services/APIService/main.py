@@ -387,7 +387,7 @@ async def run_pdf_to_transcript(
 
         try:
             params_dict = json.loads(transcription_params)
-            params = TranscriptionParams.model_validate(params_dict)
+            params = TranscriptionOnlyParams.model_validate(params_dict)
             span.set_attribute("transcription_params", params.model_dump())
         except (json.JSONDecodeError, ValidationError) as e:
             span.set_status(status=StatusCode.ERROR, description="invalid params")
@@ -420,7 +420,7 @@ async def run_pdf_to_transcript(
 def task_run_pdf_to_transcript(
     job_id: str,
     files_and_types: List[Tuple[bytes, str]],
-    transcription_params: TranscriptionParams,
+    transcription_params: TranscriptionOnlyParams,
 ):
     with LoggedSpan("api.task_run_pdf_to_transcript",logger, job_id) as span:       
 

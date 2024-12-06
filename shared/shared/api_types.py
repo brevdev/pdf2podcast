@@ -46,7 +46,7 @@ class TranscriptionParams(BaseModel):
     speaker_2_name: Optional[str] = Field(
         None, description="Name of the second speaker (not required for monologue)"
     )
-    voice_mapping: Optional[Dict[str, str]] = Field(
+    voice_mapping: Dict[str, str] = Field(
         ...,
         description="Mapping of speaker IDs to voice IDs. For monologue, only speaker-1 is required",
         example={
@@ -92,6 +92,42 @@ class TranscriptionParams(BaseModel):
                 )
 
         return self
+    
+class TranscriptionOnlyParams(BaseModel):
+    userId: str = Field(..., description="KAS User ID")
+    name: str = Field(..., description="Name of the podcast")
+    duration: int = Field(..., description="Duration in minutes")
+    monologue: bool = Field(
+        False, description="If True, creates a single-speaker podcast"
+    )
+    speaker_1_name: str = Field(
+        ..., description="Name of the speaker (or first speaker if not monologue)"
+    )
+    speaker_2_name: Optional[str] = Field(
+        None, description="Name of the second speaker (not required for monologue)"
+    )
+    guide: Optional[str] = Field(
+        None, description="Optional guidance for the transcription focus and structure"
+    )
+    vdb_task: bool = Field(
+        False,
+        description="If True, creates a VDB task when running NV-Ingest allowing for retrieval abilities",
+    )
+
+    @model_validator(mode="after")
+    def validate_monologue_settings(self) -> "TranscriptionOnlyParams":
+        if self.monologue:
+            # Check speaker_2_name is not provided
+            if self.speaker_2_name is not None:
+                raise ValueError(
+                    "speaker_2_name should not be provided for monologue podcasts"
+                )
+        else:
+            # For dialogues, ensure both speakers are present
+            if not self.speaker_2_name:
+                raise ValueError("speaker_2_name is required for dialogue podcasts")
+
+        return self    
 
 
 class TranscriptionRequest(TranscriptionParams):
