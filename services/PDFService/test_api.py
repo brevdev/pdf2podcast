@@ -190,9 +190,11 @@ def test_health_endpoint():
 
 def main():
     """Main entry point for the test script"""
-    if len(sys.argv) < 2:
-        print("Usage: python test_api.py <path_to_pdf_file1> [path_to_pdf_file2 ...]")
-        sys.exit(1)
+    # Hardcode two sample files
+    sample_files = [
+        "samples/bofa-context.pdf",
+        "samples/citi-context.pdf"
+    ]
 
     print("Running PDF Service API tests...")
 
@@ -201,7 +203,7 @@ def main():
         sys.exit(1)
 
     print("\nTest 2: Valid PDF conversion")
-    if not test_convert_pdf_endpoint(sys.argv[1:]):
+    if not test_convert_pdf_endpoint(sample_files):
         sys.exit(1)
 
     print("\nTest 3: Invalid file handling")

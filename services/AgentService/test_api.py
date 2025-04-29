@@ -4,6 +4,7 @@ import os
 import time
 from shared.api_types import TranscriptionRequest
 from shared.pdf_types import PDFMetadata
+from datetime import datetime
 
 
 def test_transcribe_api():
@@ -13,35 +14,42 @@ def test_transcribe_api():
 
     # Create a proper TranscriptionRequest
     pdf_metadata_1 = PDFMetadata(
-        filename="sample.pdf", markdown="Sample markdown content", summary=""
+        filename="sample.pdf",
+        type="target",
+        markdown="Sample markdown content",
+        summary="",
+        status="success",
+        created_at=datetime.utcnow(),
     )
 
     pdf_metadata_2 = PDFMetadata(
-        filename="sample2.pdf", markdown="Sample markdown content 2", summary=""
-    )
-
-    pdf_metadata_3 = PDFMetadata(
-        filename="sample3.pdf", markdown="Sample markdown content 3", summary=""
+        filename="sample2.pdf",
+        type="context",
+        markdown="Sample markdown content 2",
+        summary="",
+        status="success",
+        created_at=datetime.utcnow(),
     )
 
     request = TranscriptionRequest(
         # TranscriptionParams fields
+        userId="test-agent-service",
         name="Test Podcast",
         duration=2,  # Duration in minutes
+        monologue=True,
         speaker_1_name="Host",
-        speaker_2_name="Guest",
         voice_mapping={
-            "speaker-1": "iP95p4xoKVk53GoZ742B",  # Example voice ID
-            "speaker-2": "9BWtsMINqrJLrRacOk9x",  # Example voice ID
+            "speaker-1": "iP95p4xoKVk53GoZ742B",
         },
-        guide="Sample focus instructions",  # Optional
+        guide="Sample focus instructions",
         # TranscriptionRequest specific fields
-        pdf_metadata=[pdf_metadata_1, pdf_metadata_2, pdf_metadata_3],
+        pdf_metadata=[pdf_metadata_1, pdf_metadata_2],
         job_id="test-job-123",
+        vdb_task=False,
     )
 
     # Send POST request
-    response = requests.post(TRANSCRIBE_URL, json=request.model_dump())
+    response = requests.post(TRANSCRIBE_URL, json=request.model_dump(mode="json"))
 
     # Check if the request was successful
     assert (
