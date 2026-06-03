@@ -3,7 +3,7 @@ python-multipart
 uvicorn
 celery[redis]
 redis
-docling==2.2.0
+docling==2.91.0
 opentelemetry-api
 opentelemetry-sdk
 opentelemetry-instrumentation-fastapi
